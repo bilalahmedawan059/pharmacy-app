@@ -1,0 +1,11 @@
+
+Installation Guide
+
+1. Make sure to recreat the the storage symbolic link
+php artisan storage:link
+
+2. make sure to define operating systemd database path for taking backup
+define path in env var= DB_DUMP_COMMAND_PATH.
+
+3. Define the purchased buyer name in app env
+
