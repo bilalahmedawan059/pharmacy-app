@@ -21,6 +21,15 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 
 
+Route::get('/debug-db', function () {
+    return [
+        'host' => config('database.connections.mysql.host'),
+        'port' => config('database.connections.mysql.port'),
+        'database' => config('database.connections.mysql.database'),
+        'socket' => config('database.connections.mysql.unix_socket'),
+    ];
+});
+
 Route::get('/', function () {
     return view('auth.login');
 });
