@@ -33,7 +33,6 @@ Route::get('/debug-db', function () {
 
 Route::get('/run-seed', function () {
     Artisan::call('db:seed', ['--force' => true]);
-
     return response(Artisan::output())->header('Content-Type', 'text/plain');
 });
 
