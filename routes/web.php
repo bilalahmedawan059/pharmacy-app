@@ -41,6 +41,12 @@ Route::get('/run-seed', function () {
     return response(Artisan::output())->header('Content-Type', 'text/plain');
 });
 
+Route::get('/storage-link', function () {
+    Artisan::call('storage:link');
+
+    return 'Storage link created successfully.';
+});
+
 Route::get('/', function () {
     return view('auth.login');
 });
