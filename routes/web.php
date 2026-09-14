@@ -32,10 +32,6 @@ Route::get('/debug-db', function () {
 });
 
 Route::get('/run-seed', function () {
-    if (request()->query('key') !== env('SEED_SECRET', 'change-me')) {
-        abort(403, 'Forbidden');
-    }
-
     Artisan::call('db:seed', ['--force' => true]);
 
     return response(Artisan::output())->header('Content-Type', 'text/plain');
