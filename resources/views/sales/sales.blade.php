@@ -32,7 +32,7 @@
             <!-- Recent Sales -->
             <div class="card">
                 <div class="card-header">
-                    <h5>Added Sales</h5>
+                            <h5>Invoices</h5>
                     <div class="card-header-right">
                         <div class="btn-group card-option">
                             <button type="button" class="btn dropdown-toggle btn-icon" data-toggle="dropdown"
@@ -60,54 +60,36 @@
                         <table id="datatable-export" class="table table-hover table-center mb-0">
                             <thead>
                                 <tr>
-                                    <th>Medicine Name</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
+                                    <th>Invoice</th>
+                                    <th>Items</th>
                                     <th>Total Price</th>
+                                    <th>Cashier</th>
                                     <th>Date</th>
                                     <th class="action-btn">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($sales as $sale)
-                                    @if (!empty($sale->product->purchase))
+                                @foreach ($transactions as $transaction)
                                         <tr>
-                                            <td>{{ $sale->product->purchase->name }}</td>
-                                            <td>{{ $sale->quantity }}</td>
-                                            <td>{{ AppSettings::get('app_currency', '$') }} {{ $sale->product->price }}</td>
-                                            <td>{{ AppSettings::get('app_currency', '$') }} {{ $sale->total_price }}</td>
-                                            <td>{{ date_format(date_create($sale->created_at), 'd M, Y') }}</td>
+                                            <td>{{ $transaction->invoice_number }}</td>
+                                            <td>{{ $transaction->lines->sum('quantity') }}</td>
+                                            <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->total, 2) }}</td>
+                                            <td>{{ optional($transaction->user)->name ?: 'Staff' }}</td>
+                                            <td>{{ $transaction->created_at->format('d M, Y H:i') }}</td>
                                             <td>
                                                 <div class="actions">
-                                                    @can('update-sales')
-                                                    @if ($sale->product->purchase->quantity != 0)
-                                                        <a data-id="{{ $sale->id }}"
-                                                            data-product="{{ $sale->product_id }}"
-                                                            data-quantity="{{ $sale->quantity }}"
-                                                            class="btn btn-sm btn-info editbtn" href="javascript:void(0);">
-                                                            <i class="fe fe-pencil"></i> Edit
-                                                        </a>
-                                                        @else
-                                                        <label class="badge badge-danger"> Out of Stock</label>
-                                                        @endif
-                                                    @endcan
-                                                    @can('destroy-sales')
-                                                        <a data-id="{{ $sale->id }}" href="javascript:void(0);"
-                                                            class="btn btn-sm btn-danger deletebtn" data-toggle="modal">
-                                                            <i class="fe fe-trash"></i> Delete
-                                                        </a>
-                                                    @endcan
+                                                    <a href="{{ route('sales.transaction.print', $transaction) }}" class="btn btn-sm btn-info">Print</a>
+                                                    <a href="{{ route('sales.transaction.pdf', $transaction) }}" class="btn btn-sm btn-secondary">PDF</a>
                                                 </div>
                                             </td>
                                         </tr>
-                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            <!-- /Recent sales -->
+            <!-- /Invoices -->
 
         </div>
         @can('create-sales')

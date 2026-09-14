@@ -6,8 +6,11 @@ use App\Events\MedicineOutStock;
 use App\Models\Sales;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\SaleTransaction;
 use Illuminate\Http\Request;
-use App\Events\PurchaseOutStock;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class SalesController extends Controller
@@ -17,78 +20,25 @@ class SalesController extends Controller
     {
         $request->validate([
             'barcode' => 'required|string',
-            'quantity' => 'required|integer',
         ]);
-//
-        $product = Product::where('product_code', $request->barcode)->first();
-//
-//        $sold_product = Product::find($product);
-//
-        $purchased_item = Purchase::find($product->purchase->id);
-//
-        if (!empty($request->edit_id)) {
-            $sales_quantity = Sales::find($request->edit_id)->quantity;
-            $purchased_item->increment('quantity',  $sales_quantity);
+
+        $product = Product::with('purchase')
+            ->where('product_code', $request->barcode)
+            ->first();
+
+        if (!$product || !$product->purchase) {
+            return response()->json(['success' => false, 'message' => 'Medicine not found.'], 404);
         }
 
-        $new_quantity = ($purchased_item->quantity) - ($request->quantity);
-        $notification = '';
-
-        if (!($new_quantity < 0)) {
-
-            Sales::updateOrCreate(
-                ['id' => $request->edit_id],
-                [
-                    'product_id' => $product->id,
-                    'quantity' => $request->quantity,
-                    'total_price' => ($request->quantity) * ($product->price),
-                ]
-            );
-
-            $purchased_item->update([
-                'quantity' => $new_quantity,
-            ]);
-
-            $notification = "Medicine sold successfully!!";
-
-            if ($new_quantity <= 1 || $new_quantity == 0) {
-
-                event(new MedicineOutStock($purchased_item));
-//                // end of notification
-                $notification = "Medicine is running out of stock!!!";
-            }
-        }elseif ($request->quantity > $purchased_item->quantity) {
-            $notification = array(
-                'error' => "Medicine request quantity can not be grater than available quantity!!!  " . ' Available Quantity is ' . ($purchased_item->quantity),
-            );
-
-            if (!empty($request->edit_id)) {
-                $sales_quantity = Sales::find($request->edit_id)->quantity;
-                $purchased_item->decrement('quantity',  $sales_quantity);
-            }
-            return back()->with($notification);
-        }
-
-//        return back()->with($notification);
         return response()->json([
             'success' => true,
-            'message' => 'Product data saved successfully.',
-            'notification' => $notification
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->purchase->name,
+                'price' => (float) $product->price,
+                'stock' => (int) $product->purchase->quantity,
+            ],
         ]);
-
-//        if ($product && $product->purchase && $product->purchase->quantity > 0) {
-//            return response()->json([
-//                'success' => true,
-//                'product' => [
-//                    'id' => $product->id,
-//                    'name' => $product->purchase->name,
-//                    'quantity' => 1
-//                ]
-//            ]);
-//        }
-
-//        return response()->json(['success' => false, 'message' => 'Product not found or out of stock']);
-//        return response()->json(['success' => false, 'message' => $request->barcode]);
     }
 
 
@@ -96,13 +46,15 @@ class SalesController extends Controller
     public function index()
     {
         $title = "sales";
-        $products = Product::get();
-        $sales = Sales::with('product')->latest()->get();
+        $products = Product::with('purchase')->get();
+        $sales = Sales::with('product.purchase')->latest()->get();
+        $transactions = SaleTransaction::with('lines.product.purchase', 'user')->latest()->get();
 
         return view('sales.sales', compact(
             'title',
             'products',
-            'sales'
+            'sales',
+            'transactions'
         ));
     }
 
@@ -110,74 +62,108 @@ class SalesController extends Controller
     public function index_Auto()
     {
         $title = "sales";
-        $products = Product::get();
-        $sales = Sales::with('product')->latest()->get();
-
-        return view('auto_sales.sales', compact(
-            'title',
-            'products',
-            'sales'
-        ));
+        return $this->index();
     }
 
 
     public function store(Request $request)
     {
-        $this->validate($request, [
-            'product' => 'required',
-            'quantity' => 'required|integer|min:1'
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer',
+            'items.*.quantity' => 'required|integer|min:1',
+            'amount_received' => 'required|numeric|min:0',
+            'customer_name' => 'nullable|string|max:150',
         ]);
-        $sold_product = Product::find($request->product);
 
-        $purchased_item = Purchase::find($sold_product->purchase->id);
+        $items = collect($request->input('items'))
+            ->groupBy('product_id')
+            ->map(function ($lines) {
+                return ['product_id' => (int) $lines->first()['product_id'], 'quantity' => $lines->sum('quantity')];
+            })->values();
 
-            if (!empty($request->edit_id)) {
-                $sales_quantity = Sales::find($request->edit_id)->quantity;
-                $purchased_item->increment('quantity',  $sales_quantity);
+        try {
+            $transaction = DB::transaction(function () use ($items, $request) {
+            $subtotal = 0;
+            $prepared = [];
+
+            foreach ($items as $item) {
+                $product = Product::with('purchase')->findOrFail($item['product_id']);
+                $purchase = Purchase::whereKey($product->purchase_id)->lockForUpdate()->firstOrFail();
+
+                if ($purchase->quantity < $item['quantity']) {
+                    throw new \DomainException($purchase->name . ' has only ' . $purchase->quantity . ' left in stock.');
+                }
+
+                $lineTotal = round($item['quantity'] * (float) $product->price, 2);
+                $subtotal += $lineTotal;
+                $prepared[] = compact('product', 'purchase', 'item', 'lineTotal');
             }
 
-            $new_quantity = ($purchased_item->quantity) - ($request->quantity);
-            $notification = '';
+            $total = round($subtotal, 2);
+            $received = round((float) $request->amount_received, 2);
 
-            if (!($new_quantity < 0)) {
+            if ($received < $total) {
+                throw new \DomainException('Amount received cannot be less than the invoice total.');
+            }
 
-                Sales::updateOrCreate(
-                    [
-                        'product_id' => $request->product,
-                        'quantity' => $request->quantity,
-                        'total_price' => ($request->quantity) * ($sold_product->price),
-                    ]
-                );
+            $invoice = SaleTransaction::create([
+                'invoice_number' => $this->invoiceNumber(),
+                'user_id' => optional($request->user())->id,
+                'customer_name' => $request->customer_name,
+                'subtotal' => $subtotal,
+                'discount' => 0,
+                'total' => $total,
+                'amount_received' => $received,
+                'change_amount' => round($received - $total, 2),
+                'payment_method' => 'cash',
+                'payment_status' => 'paid',
+            ]);
 
-                $purchased_item->update([
-                    'quantity' => $new_quantity,
+            foreach ($prepared as $line) {
+                Sales::create([
+                    'sale_transaction_id' => $invoice->id,
+                    'product_id' => $line['product']->id,
+                    'quantity' => $line['item']['quantity'],
+                    'total_price' => $line['lineTotal'],
                 ]);
 
-                $notification = array(
-                    'success' => "Medicine sold successfully!!",
-                );
-
-                if ($new_quantity <= 1 || $new_quantity == 0) {
-
-                    event(new MedicineOutStock($purchased_item));
-                    // end of notification
-                    $notification = array(
-                        'error' => "Medicine is running out of stock!!!",
-                    );
+                $line['purchase']->decrement('quantity', $line['item']['quantity']);
+                if ($line['purchase']->quantity <= 1) {
+                    event(new MedicineOutStock($line['purchase']->fresh()));
                 }
-        }elseif ($request->quantity > $purchased_item->quantity) {
-                $notification = array(
-                    'error' => "Medicine request quantity can not be grater than available quantity!!!  " . ' Available Quantity is ' . ($purchased_item->quantity),
-                );
-
-                if (!empty($request->edit_id)) {
-                    $sales_quantity = Sales::find($request->edit_id)->quantity;
-                    $purchased_item->decrement('quantity',  $sales_quantity);
-                }
-                return back()->with($notification);
             }
 
-        return back()->with($notification);
+                return $invoice;
+            });
+        } catch (\DomainException $exception) {
+            return back()->withInput()->withErrors(['items' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('sales.transaction.print', $transaction);
+    }
+
+    private function invoiceNumber()
+    {
+        do {
+            $number = 'INV-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+        } while (SaleTransaction::where('invoice_number', $number)->exists());
+
+        return $number;
+    }
+
+    public function print(SaleTransaction $transaction)
+    {
+        $transaction->load('lines.product.purchase', 'user');
+        return view('sales.receipt', compact('transaction'));
+    }
+
+    public function pdf(SaleTransaction $transaction)
+    {
+        $transaction->load('lines.product.purchase', 'user');
+        return Pdf::loadView('sales.receipt', compact('transaction'))
+            ->setPaper('a4')
+            ->download($transaction->invoice_number . '.pdf');
     }
 
 

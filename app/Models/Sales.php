@@ -13,7 +13,7 @@ class Sales extends Model
     use HasFactory,SoftDeletes;
 
     protected $fillable = [
-        'product_id','quantity','total_price',
+        'sale_transaction_id','product_id','quantity','total_price',
     ];
 
     public function product(){
@@ -22,6 +22,10 @@ class Sales extends Model
 
     public function purchase(){
         return $this->belongsTo(Purchase::class,'purchase_id');
+    }
+
+    public function transaction(){
+        return $this->belongsTo(SaleTransaction::class, 'sale_transaction_id');
     }
     
 }

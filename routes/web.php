@@ -19,6 +19,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use Illuminate\Support\Facades\Artisan;
 
 
 Route::get('/debug-db', function () {
@@ -64,7 +65,10 @@ Route::group(['middleware'=>['auth']],function (){
     Route::get('home',[DashboardController::class,'index'])->name('dashboard');
     Route::get('/', [DashboardController::class,'index']);
 
-    Route::get('logout',[LogoutController::class,'index'])->name('logout');
+    Route::get('logout', function () {
+        Auth::logout();
+        return redirect()->route('login');
+    })->name('logout');
 
     Route::get('categories',[CategoryController::class,'index'])->name('categories');
     Route::post('categories',[CategoryController::class,'store']);
@@ -96,8 +100,9 @@ Route::group(['middleware'=>['auth']],function (){
 
     Route::get('sales',[SalesController::class,'index'])->name('sales');
     Route::post('sales',[SalesController::class,'store']);
-    Route::put('sales',[SalesController::class,'update']);
     Route::delete('sales',[SalesController::class,'destroy']);
+    Route::get('sales/transactions/{transaction}/print',[SalesController::class,'print'])->name('sales.transaction.print');
+    Route::get('sales/transactions/{transaction}/pdf',[SalesController::class,'pdf'])->name('sales.transaction.pdf');
 
     Route::get('sales-auto',[SalesController::class,'index_Auto'])->name('sales-auto');
     Route::post('/barcode', [SalesController::class, 'getProductByBarcode'])->name('getProductByBarcode');
