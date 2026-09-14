@@ -11,8 +11,11 @@
         table { border-collapse: collapse; width: 100%; margin: 20px 0; }
         th, td { border-bottom: 1px solid #ddd; padding: 9px 4px; text-align: left; }
         th:nth-child(n+2), td:nth-child(n+2) { text-align: right; }
-        .totals { border-top: 2px solid #222; padding-top: 8px; margin-left: auto; max-width: 280px; }
-        .totals div { display: flex; justify-content: space-between; gap: 18px; padding: 3px 0; }
+        .totals { border-top: 2px solid #222; padding-top: 8px; 
+        /* margin-left: auto;  */
+        /* max-width: 280px;  */
+    }
+        .totals div { display: flex; justify-content: space-between; gap: 18px; padding: 3px 0; flex-direction: column; }
         .grand-total { font-weight: bold; font-size: 18px; }
         .actions { margin: 24px 0; }
         .actions a, .actions button { background: #206bc4; border: 0; color: white; cursor: pointer; padding: 10px 14px; text-decoration: none; margin-right: 8px; }
