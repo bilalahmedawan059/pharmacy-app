@@ -54,7 +54,6 @@
     <p>Thank you for your purchase.</p>
     <div class="actions">
         <button type="button" onclick="window.print()">Print bill</button>
-        <a href="{{ route('sales.transaction.pdf', $transaction) }}">Download PDF</a>
         <a href="{{ route('sales') }}">New sale</a>
     </div>
 </body>

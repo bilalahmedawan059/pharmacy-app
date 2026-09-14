@@ -10,7 +10,6 @@ use App\Models\SaleTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class SalesController extends Controller
@@ -157,15 +156,6 @@ class SalesController extends Controller
         $transaction->load('lines.product.purchase', 'user');
         return view('sales.receipt', compact('transaction'));
     }
-
-    public function pdf(SaleTransaction $transaction)
-    {
-        $transaction->load('lines.product.purchase', 'user');
-        return Pdf::loadView('sales.receipt', compact('transaction'))
-            ->setPaper('a4')
-            ->download($transaction->invoice_number . '.pdf');
-    }
-
 
     public function destroy(Request $request)
     {

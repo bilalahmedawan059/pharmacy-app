@@ -79,7 +79,6 @@
                                             <td>
                                                 <div class="actions">
                                                     <a href="{{ route('sales.transaction.print', $transaction) }}" class="btn btn-sm btn-info">Print</a>
-                                                    <a href="{{ route('sales.transaction.pdf', $transaction) }}" class="btn btn-sm btn-secondary">PDF</a>
                                                 </div>
                                             </td>
                                         </tr>

@@ -10,7 +10,6 @@
         "fruitcake/laravel-cors": "^2.0",
         "fx3costa/laravelchartjs": "^2.8",
         "guzzlehttp/guzzle": "^7.0.1",
-        "barryvdh/laravel-dompdf": "^2.0",
         "laravel/framework": "^8.75",
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",

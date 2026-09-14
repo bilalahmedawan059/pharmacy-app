@@ -102,7 +102,6 @@ Route::group(['middleware'=>['auth']],function (){
     Route::post('sales',[SalesController::class,'store']);
     Route::delete('sales',[SalesController::class,'destroy']);
     Route::get('sales/transactions/{transaction}/print',[SalesController::class,'print'])->name('sales.transaction.print');
-    Route::get('sales/transactions/{transaction}/pdf',[SalesController::class,'pdf'])->name('sales.transaction.pdf');
 
     Route::get('sales-auto',[SalesController::class,'index_Auto'])->name('sales-auto');
     Route::post('/barcode', [SalesController::class, 'getProductByBarcode'])->name('getProductByBarcode');
