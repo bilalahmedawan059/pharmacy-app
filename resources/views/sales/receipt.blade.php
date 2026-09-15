@@ -47,6 +47,7 @@
     <div class="totals">
         <div><span>Subtotal</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->subtotal, 2) }}</span></div>
         <div><span>Discount</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->discount, 2) }}</span></div>
+        <div><span>Payment method</span><span>{{ ucfirst($transaction->payment_method ?? 'cash') }}</span></div>
         <div class="grand-total"><span>Total</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->total, 2) }}</span></div>
         <div><span>Cash received</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->amount_received, 2) }}</span></div>
         <div><span>Change</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->change_amount, 2) }}</span></div>

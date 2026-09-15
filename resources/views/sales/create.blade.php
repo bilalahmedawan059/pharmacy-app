@@ -31,11 +31,35 @@
         <label for="customer_name">Customer name (optional)</label>
         <input type="text" class="form-control" name="customer_name" value="{{ old('customer_name') }}">
     </div>
+
+    <div class="form-group">
+        <label>Payment method</label>
+        <div class="payment-methods" role="radiogroup" aria-label="Payment method">
+            <label class="payment-method active"><input type="radio" name="payment_method" value="cash" checked> <span>Cash</span></label>
+            <label class="payment-method"><input type="radio" name="payment_method" value="card"> <span>Card</span></label>
+            <label class="payment-method"><input type="radio" name="payment_method" value="jazzcash"> <span>JazzCash</span></label>
+            <label class="payment-method"><input type="radio" name="payment_method" value="easypaisa"> <span>EasyPaisa</span></label>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="discount_percent">Discount (%)</label>
+        <input type="number" min="0" max="100" step="0.01" class="form-control" name="discount_percent" id="discount_percent" value="0">
+        <input type="hidden" name="discount" id="discount" value="0">
+    </div>
+
     <div class="form-group">
         <label for="amount_received">Cash received</label>
         <input type="number" min="0" step="0.01" class="form-control" name="amount_received" id="amount_received" required>
     </div>
-    <div class="d-flex justify-content-between font-weight-bold mb-3"><span>Total</span><span id="cart-total">{{ AppSettings::get('app_currency', '$') }} 0.00</span></div>
+
+    <div class="sale-summary-box">
+        <div class="sale-summary-row"><span>Subtotal</span><strong id="subtotal-amount">{{ AppSettings::get('app_currency', '$') }} 0.00</strong></div>
+        <div class="sale-summary-row"><span>Discount</span><strong id="discount-amount">{{ AppSettings::get('app_currency', '$') }} 0.00</strong></div>
+        <div class="sale-summary-row total"><span>Total</span><strong id="cart-total">{{ AppSettings::get('app_currency', '$') }} 0.00</strong></div>
+        <div class="sale-summary-row"><span>Change</span><strong id="change-amount">{{ AppSettings::get('app_currency', '$') }} 0.00</strong></div>
+    </div>
+
     <button type="submit" class="btn btn-primary btn-block" id="checkout-button" disabled>Complete and print bill</button>
 </form>
 @if ($errors->any())<div class="alert alert-danger mt-3">{{ $errors->first() }}</div>@endif
@@ -74,6 +98,55 @@
         font-weight: 600;
         box-shadow: none;
     }
+    .payment-methods {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .payment-method {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 90px;
+        padding: 9px 12px;
+        border: 1px solid #d9e1ea;
+        border-radius: 10px;
+        background: #f5f8fa;
+        color: #3b4d5c;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .payment-method input {
+        margin-right: 6px;
+    }
+    .payment-method.active {
+        background: #dff7f4;
+        border-color: #8ad9d4;
+        color: #0b6d69;
+    }
+    .sale-summary-box {
+        border: 1px solid #e4edf3;
+        border-radius: 12px;
+        background: #f8fafb;
+        padding: 12px 14px;
+        margin-top: 16px;
+        margin-bottom: 18px;
+    }
+    .sale-summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        color: #415264;
+    }
+    .sale-summary-row.total {
+        font-size: 18px;
+        border-top: 1px solid #e5edf2;
+        margin-top: 6px;
+        padding-top: 10px;
+        color: #1d2b36;
+    }
 </style>
 @push('page-js')
 <script>
@@ -88,19 +161,51 @@ $(function () {
             stock: Number($(this).attr('data-stock'))
         };
     }).get();
+
+    function calculateTotals() {
+        let subtotal = 0;
+        Object.keys(cart).forEach(function (id) {
+            const item = cart[id];
+            subtotal += item.quantity * item.price;
+        });
+
+        const discountPercent = parseFloat($('#discount_percent').val()) || 0;
+        const discountAmount = subtotal * (discountPercent / 100);
+        const total = subtotal - discountAmount;
+        const received = parseFloat($('#amount_received').val()) || 0;
+        const change = received - total;
+
+        $('#discount').val(discountAmount.toFixed(2));
+        $('#subtotal-amount').text(money(subtotal));
+        $('#discount-amount').text(money(discountAmount));
+        $('#cart-total').text(money(total));
+        $('#change-amount').text(money(Math.max(change, 0)));
+        return { subtotal, discountAmount, total };
+    }
+
     function renderCart() {
-        let total = 0, rows = '';
+        let subtotal = 0, rows = '';
         Object.keys(cart).forEach(function (id) {
             const item = cart[id], lineTotal = item.quantity * item.price;
-            total += lineTotal;
+            subtotal += lineTotal;
             rows += '<tr><td>' + $('<div>').text(item.name).html() + '<input type="hidden" name="items[' + id + '][product_id]" value="' + id + '"></td>' +
                 '<td><div class="quantity-control"><button type="button" class="quantity-minus" data-id="' + id + '" aria-label="Decrease quantity">-</button><input class="cart-quantity text-center" data-id="' + id + '" type="number" min="1" max="' + item.stock + '" name="items[' + id + '][quantity]" value="' + item.quantity + '"><button type="button" class="quantity-plus" data-id="' + id + '" aria-label="Increase quantity">+</button></div></td>' +
                 '<td>' + money(item.price) + '</td><td>' + money(lineTotal) + '</td><td><button type="button" class="btn btn-sm btn-danger remove-item" data-id="' + id + '">&times;</button></td></tr>';
         });
         $('#cart-table tbody').html(rows || '<tr><td colspan="5" class="text-muted">No medicines added.</td></tr>');
-        $('#cart-total').text(money(total));
+        $('#subtotal-amount').text(money(subtotal));
         $('#checkout-button').prop('disabled', Object.keys(cart).length === 0);
+
+        const discountPercent = parseFloat($('#discount_percent').val()) || 0;
+        const discountAmount = subtotal * (discountPercent / 100);
+        $('#discount').val(discountAmount.toFixed(2));
+        $('#discount-amount').text(money(discountAmount));
+        $('#cart-total').text(money(Math.max(subtotal - discountAmount, 0)));
+
+        const received = parseFloat($('#amount_received').val()) || 0;
+        $('#change-amount').text(money(Math.max(received - Math.max(subtotal - discountAmount, 0), 0)));
     }
+
     function addProduct(product) {
         if (!product || Number(product.stock) < 1) { alert('This medicine is out of stock.'); return; }
         if (!cart[product.id]) cart[product.id] = { name: product.name, price: Number(product.price), stock: Number(product.stock), quantity: 0 };
@@ -145,6 +250,11 @@ $(function () {
         const change = $(this).hasClass('quantity-plus') ? 1 : -1;
         cart[id].quantity = Math.max(1, Math.min(cart[id].quantity + change, cart[id].stock));
         renderCart();
+    });
+    $('#discount_percent, #amount_received').on('input', function () { renderCart(); });
+    $('input[name="payment_method"]').on('change', function () {
+        $('.payment-method').removeClass('active');
+        $(this).closest('.payment-method').addClass('active');
     });
     renderCart();
 });

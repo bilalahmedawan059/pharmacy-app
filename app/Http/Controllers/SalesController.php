@@ -71,7 +71,9 @@ class SalesController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
             'amount_received' => 'required|numeric|min:0',
+            'payment_method' => 'nullable|string|max:50',
             'customer_name' => 'nullable|string|max:150',
         ]);
 
@@ -99,7 +101,9 @@ class SalesController extends Controller
                 $prepared[] = compact('product', 'purchase', 'item', 'lineTotal');
             }
 
-            $total = round($subtotal, 2);
+            $discountPercent = (float) ($request->discount_percent ?? 0);
+            $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+            $total = round($subtotal - $discountAmount, 2);
             $received = round((float) $request->amount_received, 2);
 
             if ($received < $total) {
@@ -110,12 +114,12 @@ class SalesController extends Controller
                 'invoice_number' => $this->invoiceNumber(),
                 'user_id' => optional($request->user())->id,
                 'customer_name' => $request->customer_name,
-                'subtotal' => $subtotal,
-                'discount' => 0,
+                'subtotal' => round($subtotal, 2),
+                'discount' => round($discountAmount, 2),
                 'total' => $total,
                 'amount_received' => $received,
                 'change_amount' => round($received - $total, 2),
-                'payment_method' => 'cash',
+                'payment_method' => $request->payment_method ?? 'cash',
                 'payment_status' => 'paid',
             ]);
 
