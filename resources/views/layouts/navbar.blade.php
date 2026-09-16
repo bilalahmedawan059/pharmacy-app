@@ -39,14 +39,8 @@
                     </li>
                     @endcan
                     @can('view-sales')
-                            <li class="nav-item pcoded-hasmenu {{ route_is(('sales')) || route_is(('sales-auto')) ? 'active active-cover' : '' }}">
-                                <a href="#"><i class="feather icon-activity"></i> <span> Sales</span> <span class="menu-arrow"></span></a>
-                                <ul class="pcoded-submenu">
-                                    <li class="{{ request()->is('sales') ? 'active active-cover' : '' }}"><a  href="{{route('sales')}}">Manual Sales</a></li>
-                                    @can('create-purchase')
-                                        <li class="{{ request()->is('sales-auto') ? 'active active-cover' : '' }}" ><a href="{{route('sales-auto')}}">Auto Sales</a></li>
-                                    @endcan
-                                </ul>
+                            <li class="nav-item {{ route_is(('sales')) || route_is(('sales-auto')) ? 'active active-cover' : '' }}">
+                                <a href="{{ route('sales') }}"><i class="feather icon-activity"></i> <span> Sales</span></a>
                             </li>
 {{--                    <li class="nav-item  {{ request()->is('sales*') ? 'active active-cover' : '' }}"><a href="{{route('sales')}}"><i class="feather icon-activity"></i> <span>Sales</span></a></li>--}}
                     @endcan
@@ -61,11 +55,8 @@
                     @endcan
 
                     @can('view-reports')
-                    <li class="nav-item pcoded-hasmenu {{ request()->is('reports*') ? 'active active-cover' : '' }}">
-                        <a href="#"><i class="feather icon-document"></i> <span> Reports</span> <span class="menu-arrow"></span></a>
-                        <ul class="pcoded-submenu">
-                            <li class="{{ route_is('reports') ? 'active active-cover' : '' }}"><a href="{{route('reports')}}">Reports</a></li>
-                        </ul>
+                    <li class="nav-item {{ route_is(('reports')) ? 'active active-cover' : '' }}">
+                        <a href="{{ route('reports') }}"><i class="feather icon-activity"></i> <span> Reports</span></a>
                     </li>
                     @endcan
 
@@ -114,10 +105,30 @@
 
 <style>
     .active-cover{
-        background-color: cadetblue;
+        background-color: #1d8e9a;
         color: white;
     }
     .active-cover > a{
         color: white !important;
+    }
+
+    .pcoded-navbar {
+        background: #f9fbfc;
+        border-bottom: 1px solid #dfe9f2;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar > li > a,
+    .pcoded-navbar .pcoded-inner-navbar > li > a i {
+        color: #4d5c69;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar > li:hover > a,
+    .pcoded-navbar .pcoded-inner-navbar > li:hover > a i {
+        color: #0d6f69;
+    }
+
+    .pcoded-header.header-dark {
+        background: #1d2b36;
     }
 </style>

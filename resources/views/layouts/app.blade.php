@@ -28,6 +28,154 @@
     {{-- <link href="{{ asset('css/app.css') }}" rel="stylesheet"> --}}
 
     <style>
+        :root {
+            --sales-ink: #1d2b36;
+            --sales-muted: #6d7d8a;
+            --sales-teal: #1d8e9a;
+            --sales-teal-dark: #0d6f69;
+            --sales-mint: #e8f5f3;
+            --sales-border: #dfe9f2;
+            --sales-panel: #f9fbfc;
+            --sales-panel-soft: #f3f7f9;
+            --sales-canvas: #f5f8fa;
+        }
+
+        body {
+            background: var(--sales-canvas);
+            color: var(--sales-ink);
+        }
+
+        .pcoded-main-container,
+        .pcoded-wrapper,
+        .pcoded-content,
+        .pcoded-inner-content,
+        .main-body,
+        .page-wrapper {
+            background: transparent;
+        }
+
+        .page-wrapper {
+            padding-top: 8px;
+        }
+
+        .card,
+        .flat-card,
+        .table-responsive,
+        .alert,
+        .modal-content {
+            border: 1px solid var(--sales-border);
+            border-radius: 18px;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+        }
+
+        .card {
+            background: var(--sales-panel);
+            overflow: hidden;
+        }
+
+        .card-header,
+        .modal-header {
+            background: var(--sales-panel-soft);
+            border-bottom: 1px solid #e5edf3;
+            color: var(--sales-ink);
+        }
+
+        .card-header h5,
+        .card-header h6,
+        .modal-title {
+            color: var(--sales-ink);
+            font-weight: 700;
+        }
+
+        .card-body {
+            background: #fff;
+        }
+
+        .table {
+            color: var(--sales-ink);
+            background: #fff;
+            border-color: #e4edf3;
+        }
+
+        .table thead th {
+            background: var(--sales-panel-soft);
+            color: #516574;
+            border-bottom: 1px solid #dfeaf2;
+            font-size: 12px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .table td,
+        .table th {
+            border-color: #e8eff4;
+            vertical-align: middle;
+        }
+
+        .form-control,
+        .custom-select,
+        .select2-container--default .select2-selection--single,
+        .select2-container--default .select2-selection--multiple {
+            min-height: 42px;
+            border: 1px solid #d7e3eb;
+            border-radius: 10px;
+            background: var(--sales-panel);
+            color: var(--sales-ink);
+        }
+
+        .form-control:focus,
+        .custom-select:focus {
+            border-color: #8ad9d4;
+            box-shadow: 0 0 0 0.2rem rgba(62, 194, 183, 0.14);
+        }
+
+        label {
+            color: #5a6d7a;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .btn-primary,
+        .btn-success,
+        .btn-info,
+        .btn-warning,
+        .btn-danger,
+        .btn-secondary {
+            border: 0;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .btn-primary,
+        .btn-success,
+        .btn-info {
+            background: linear-gradient(135deg, #3ec2b7, var(--sales-teal));
+            color: #fff;
+        }
+
+        .btn-primary:hover,
+        .btn-success:hover,
+        .btn-info:hover {
+            background: linear-gradient(135deg, #2eaaa2, #167681);
+            color: #fff;
+        }
+
+        .btn-light,
+        .btn-outline-primary,
+        .btn-outline-secondary {
+            border-radius: 10px;
+        }
+
+        a {
+            color: var(--sales-teal);
+        }
+
+        a:hover {
+            color: var(--sales-teal-dark);
+        }
+
         .select2,
         .select2-search__field,
         .select2-results__option {
