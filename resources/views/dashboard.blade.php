@@ -85,7 +85,7 @@
 							<i class="fe fe-users"></i>
 						</span>
 						<div class="dash-count">
-							<h3>{{\DB::table('users')->count()}}</h3>
+							<h3>{{ \App\Models\User::query()->when(!auth()->user()->hasRole('super-admin'), function ($query) { return $query->where('pharmacy_id', auth()->user()->pharmacy_id); })->count() }}</h3>
 						</div>
 					</div>
 					<div class="dash-widget-info">

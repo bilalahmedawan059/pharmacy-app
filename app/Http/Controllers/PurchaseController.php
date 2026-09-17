@@ -12,6 +12,7 @@ class PurchaseController extends Controller
 
     public function index()
     {
+        $this->authorize('view-purchase');
         $title = "purchases";
         $purchases = Purchase::with('category')->get();
         return view('purchases.purchases', compact(
@@ -22,6 +23,7 @@ class PurchaseController extends Controller
 
     public function create()
     {
+        $this->authorize('create-purchase');
         $title = "add Purchase";
         $categories = Category::get();
         $suppliers = Supplier::get();
@@ -35,6 +37,7 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create-purchase');
         $this->validate($request, [
             'name' => 'required|max:200',
             'category' => 'required',
@@ -45,6 +48,8 @@ class PurchaseController extends Controller
             'image' => 'file|image|mimes:jpg,jpeg,png,gif',
         ]);
         $imageName = null;
+        Category::findOrFail($request->category);
+        Supplier::findOrFail($request->supplier);
         if ($request->hasFile('image')) {
             $imageName = time() . '.' . $request->image->extension();
             $request->image->move(public_path('storage/purchases'), $imageName);
@@ -75,8 +80,9 @@ class PurchaseController extends Controller
 
     public function show(Request $request, $id)
     {
+        $this->authorize('update-purchase');
         $title = "Edit Purchase";
-        $purchase = Purchase::find($id);
+        $purchase = Purchase::findOrFail($id);
         $categories = Category::get();
         $suppliers = Supplier::get();
         return view('purchases.edit-purchase', compact(
@@ -89,6 +95,7 @@ class PurchaseController extends Controller
 
     public function update(Request $request, Purchase $purchase)
     {
+        $this->authorize('update-purchase');
         $this->validate($request, [
             'name' => 'required|max:200',
             'category' => 'required',
@@ -99,6 +106,8 @@ class PurchaseController extends Controller
             'image' => 'file|image|mimes:jpg,jpeg,png,gif',
         ]);
         $imageName = null;
+        Category::findOrFail($request->category);
+        Supplier::findOrFail($request->supplier);
         if ($request->hasFile('image')) {
             $imageName = time() . '.' . $request->image->extension();
             $request->image->move(public_path('storage/purchases'), $imageName);
@@ -128,7 +137,8 @@ class PurchaseController extends Controller
 
     public function destroy(Request $request)
     {
-        $purchase = Purchase::find($request->id);
+        $this->authorize('destroy-purchase');
+        $purchase = Purchase::findOrFail($request->id);
         $purchase->delete();
         $notification = array(
             'message' => "Purchase has been deleted",

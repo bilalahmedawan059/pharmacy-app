@@ -93,7 +93,7 @@
                                         <td class="text-center">
                                             <div class="actions">
                                                 <a data-id="{{ $role->id }}" data-role="{{ $role->name }}"
-                                                    data-permissions="{{ $role->getAllPermissions() }}"
+                                                    data-permissions='@json($role->getAllPermissions()->pluck("name")->values())'
                                                     class="btn btn-sm btn-info editbtn" data-toggle="modal"
                                                     href="javascript:void(0)">
                                                     <i class="fe fe-pencil"></i> Edit
@@ -222,26 +222,33 @@
     </script>
     <script>
         $(document).ready(function() {
-            $('#roles-table').on('click', '.editbtn', function() {
+            $('#roles-table').on('click', '.editbtn', function(event) {
                 event.preventDefault();
                 var id = $(this).data('id');
                 var role = $(this).data('role');
                 var permissions = $(this).data('permissions');
+                if (typeof permissions === 'string') {
+                    permissions = JSON.parse(permissions);
+                }
 
 
                 $('#edit_id').val(id);
+                $('#role_method').val('PUT');
                 $('.edit_role').val(role);
-                $(".edit_perms").val(permissions).trigger('change');
-                $('.btn-block').text("Update Changes");
+                $('.edit_perms').prop('checked', false);
+                $('.edit_perms').each(function() {
+                    $(this).prop('checked', (permissions || []).indexOf($(this).val()) !== -1);
+                });
+                $('#role-form .btn-block').text("Update Changes");
             });
 
-            $('#add_new').on('click', function() {
+            $('#add_new').on('click', function(event) {
                 event.preventDefault();
                 $('#edit_id').val('');
-                $(".edit_perms").val('').trigger('change');
+                $('#role_method').val('');
+                $('.edit_perms').prop('checked', false);
                 $('.edit_role').val('');
-                $('.btn-block').text("Save Changes");
-
+                $('#role-form .btn-block').text("Save Changes");
             });
             //
         });

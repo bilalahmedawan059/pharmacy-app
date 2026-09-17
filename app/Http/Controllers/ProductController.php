@@ -19,6 +19,7 @@ class ProductController extends Controller
 
     public function index()
     {
+        $this->authorize('view-products');
         $title = "products";
         $products = Product::with('purchase')->get();
 
@@ -28,6 +29,7 @@ class ProductController extends Controller
     }
 
     public function create(){
+        $this->authorize('create-product');
         $title= "Add Product";
         $products = Purchase::get();
 
@@ -37,6 +39,7 @@ class ProductController extends Controller
     }
 
     public function expired(){
+        $this->authorize('view-expired-products');
         $title = "expired Products";
         $products = Purchase::whereDate('expiry_date', '<', Carbon::now())->get();
 
@@ -47,6 +50,7 @@ class ProductController extends Controller
 
 
     public function outstock(){
+        $this->authorize('view-outstock-products');
         $title = "outstocked Products";
         $products = Purchase::where('quantity', '<=', 0)->get();
         $product = Purchase::where('quantity', '<=', 0)->first();
@@ -58,6 +62,7 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create-product');
         $this->validate($request,[
             'product'=>'required|max:200',
             'price'=>'required|min:1',
@@ -98,8 +103,9 @@ class ProductController extends Controller
 
     public function show(Request $request, $id)
     {
+        $this->authorize('update-product');
         $title = "Edit Product";
-        $product = Product::find($id);
+        $product = Product::findOrFail($id);
         $purchased_products = Purchase::get();
         return view('products.edit-product',compact(
             'title','product','purchased_products'
@@ -108,6 +114,7 @@ class ProductController extends Controller
 
     public function update(Request $request,Product $product)
     {
+        $this->authorize('update-product');
         $this->validate($request,[
             'product'=>'required|max:200',
             'price'=>'required',
@@ -139,6 +146,7 @@ class ProductController extends Controller
 
     public function destroy(Request $request)
     {
+        $this->authorize('destroy-product');
         $product = Product::findOrFail($request->id);
         $product->delete();
         $notification = array(

@@ -7,6 +7,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SettingController;
@@ -42,11 +43,7 @@ Route::get('/storage-link', function () {
     return 'Storage link created successfully.';
 });
 
-Route::get('/', function () {
-    return view('auth.login');
-});
-
-Auth::routes();
+Auth::routes(['register' => false]);
 
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
@@ -54,7 +51,8 @@ Route::group(['middleware'=>['guest']],function (){
     Route::get('login',[LoginController::class,'index'])->name('login');
     Route::post('login',[LoginController::class,'login']);
     Route::get('register',[RegisterController::class,'index'])->name('register');
-    Route::post('register',[RegisterController::class,'store']);
+    Route::post('register/step/{step}',[RegisterController::class,'step'])->name('register.step');
+    Route::post('register/launch',[RegisterController::class,'launch'])->name('register.launch');
 
 
 
@@ -127,6 +125,9 @@ Route::group(['middleware'=>['auth']],function (){
     Route::put('profile',[UserController::class,'updatePassword'])->name('update-password');
 
     Route::get('settings',[SettingController::class,'index'])->name('settings');
+
+    Route::get('branches/create',[BranchController::class,'create'])->name('branches.create');
+    Route::post('branches',[BranchController::class,'store'])->name('branches.store');
 
     Route::get('notification',[NotificationController::class,'markAsRead'])->name('mark-as-read');
     Route::get('notification-read',[NotificationController::class,'read'])->name('read');

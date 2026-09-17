@@ -10,6 +10,7 @@ class CategoryController extends Controller
 
     public function index()
     {
+        $this->authorize('view-category');
         $title = "categories";
         $categories = Category::get();
         return view('categories.categories',compact(
@@ -20,10 +21,11 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create-category');
         $this->validate($request,[
             'name'=>'required|max:100',
         ]);
-        Category::create($request->all());
+        Category::create(['name' => $request->name]);
         $notification=array(
             'message'=>"Category has been added",
             'alert-type'=>'success',
@@ -34,8 +36,9 @@ class CategoryController extends Controller
 
     public function update(Request $request)
     {
+        $this->authorize('update-category');
         $this->validate($request,['name'=>'required|max:100']);
-        $category = Category::find($request->id);
+        $category = Category::findOrFail($request->id);
         $category->update([
             'name'=>$request->name,
         ]);
@@ -49,7 +52,8 @@ class CategoryController extends Controller
 
     public function destroy(Request $request)
     {
-        $category = Category::find($request->id);
+        $this->authorize('destroy-category');
+        $category = Category::findOrFail($request->id);
         $category->delete();
         $notification=array(
             'message'=>"Category has been deleted",

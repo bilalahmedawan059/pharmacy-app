@@ -10,6 +10,7 @@ class PermissionController extends Controller
 
     public function index()
     {
+        abort_unless(auth()->user()->hasRole('super-admin'), 403);
         $title = "Permissions";
         $permissions =Permission::get();
         return view('permissions.permissions',compact(
@@ -20,6 +21,7 @@ class PermissionController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->hasRole('super-admin'), 403);
         $this->validate($request,[
             'permission'=>'required|max:200',
         ]);
@@ -34,6 +36,7 @@ class PermissionController extends Controller
 
     public function update(Request $request)
     {
+        abort_unless(auth()->user()->hasRole('super-admin'), 403);
         $this->validate($request,[
             'permission'=>'required|max:200',
         ]);
@@ -48,6 +51,7 @@ class PermissionController extends Controller
 
     public function destroy(Request $request)
     {
+        abort_unless(auth()->user()->hasRole('super-admin'), 403);
         $permission = Permission::find($request->id);
         $permission->delete();
         $notification = notify('Permission has been deleted');

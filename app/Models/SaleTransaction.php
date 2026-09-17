@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Concerns\BelongsToPharmacy;
 
 class SaleTransaction extends Model
 {
+    use BelongsToPharmacy;
+
     protected $fillable = [
         'invoice_number',
         'user_id',
@@ -19,6 +22,7 @@ class SaleTransaction extends Model
         'change_amount',
         'payment_method',
         'payment_status',
+        'pharmacy_id',
     ];
 
     protected $casts = [

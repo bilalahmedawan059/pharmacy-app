@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Branch;
+use App\Models\Pharmacy;
+use App\Models\Role;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -13,37 +17,61 @@ class UserController extends Controller
     public function index()
     {
         $title = "users";
-        $users  = User::with('roles')->get();
-        $roles = Role::get();
+        $this->authorize('view-users');
+        $usersQuery = User::with('roles');
+        if (!auth()->user()->hasRole('super-admin')) {
+            $usersQuery->where('pharmacy_id', auth()->user()->pharmacy_id);
+        }
+        $users = $usersQuery->get();
+        $roles = Role::query()->where('name', '!=', 'super-admin')->orderBy('name')->get();
+        $pharmacies = auth()->user()->hasRole('super-admin')
+            ? Pharmacy::orderBy('business_name')->get()
+            : Pharmacy::whereKey(auth()->user()->pharmacy_id)->get();
         return view('users.users',compact(
-            'title','users','roles'
+            'title','users','roles','pharmacies'
         ));
     }
 
     public function store(Request $request){
-        
+        $this->authorize('create-user');
+
+        $isSuperAdmin = auth()->user()->hasRole('super-admin');
+        $pharmacyId = $isSuperAdmin
+            ? $request->input('pharmacy_id')
+            : auth()->user()->pharmacy_id;
+
         $notification = null;
         
         $this->validate($request,[
             'name'=>'required|max:100',
             'email'=>'required|email',
             'role'=>'required',
+            'pharmacy_id'=>[$isSuperAdmin ? 'required' : 'nullable', 'integer', 'exists:pharmacies,id'],
             'password'=>'required|confirmed|max:200',
             'avatar'=>'file|image|mimes:jpg,jpeg,gif,png',
         ]);
+        $role = Role::where('name', $request->role)->firstOrFail();
+        if ($request->role === 'super-admin' && !auth()->user()->hasRole('super-admin')) {
+            abort(403);
+        }
         $imageName = null;
+        $branch = $request->branch_id
+            ? Branch::where('pharmacy_id', $pharmacyId)->findOrFail($request->branch_id)
+            : null;
         if($request->hasFile('avatar')){
             $imageName = time().'.'.$request->avatar->extension();
             $request->avatar->move(public_path('storage/users'), $imageName);
         }
             try {
                 $user = User::create([
+                    'pharmacy_id'=>$pharmacyId,
+                    'branch_id'=>optional($branch)->id,
                     'name'=>$request->name,
                     'email'=>$request->email,
                     'password'=>Hash::make($request->password),
                     'avatar'=>$imageName
                 ]);
-                $user->assignRole($request->role);
+                $user->assignRole($role);
                 $notification =array(
                     'message'=>"User has been added!!!",
                     'alert-type'=>'success'
@@ -60,7 +88,7 @@ class UserController extends Controller
     public function profile()
     {
         $title = "profile";
-        $roles = Role::get();
+        $roles = Role::query()->where('name', '!=', 'super-admin')->orderBy('name')->get();
         return view('users.profile',compact(
             'title','roles'
         ));
@@ -73,6 +101,10 @@ class UserController extends Controller
             'email'=>'required|email',
             'avatar'=>'file|image|mimes:jpg,jpeg,gif,png',
         ]);
+        $role = Role::where('name', $request->role)->firstOrFail();
+        if ($request->role === 'super-admin' && !auth()->user()->hasRole('super-admin')) {
+            abort(403);
+        }
         if($request->hasFile('avatar')){
             $imageName = time().'.'.$request->avatar->extension();
             $request->avatar->move(public_path('storage/users'), $imageName);
@@ -125,25 +157,90 @@ class UserController extends Controller
 
     public function update(Request $request)
     {
-        $this->validate($request,[
-            'name'=>'required|max:100',
-            'email'=>'required|email',
-            'password'=>'required|confirmed|max:200',
-            'avatar'=>'file|image|mimes:jpg,jpeg,gif,png',
-        ]);
-        $imageName = auth()->user()->avatar;
-        if($request->hasFile('avatar')){
-            $imageName = time().'.'.$request->avatar->extension();
-            $request->avatar->move(public_path('storage/users'), $imageName);
+        $actor = auth()->user();
+        $this->authorize('update-user');
+
+        $isSuperAdmin = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', $actor->id)
+            ->where('model_has_roles.model_type', User::class)
+            ->where('roles.name', 'super-admin')
+            ->where('roles.guard_name', 'web')
+            ->exists();
+
+        $userQuery = User::withoutGlobalScopes();
+        if (!$isSuperAdmin) {
+            $userQuery->where('pharmacy_id', $actor->pharmacy_id);
         }
-        $user = User::find($request->id);
-        $user->update([
-            'name'=>$request->name,
-            'email'=>$request->email,
-            'password'=>Hash::make($request->password),
-            'avatar'=>$imageName
+
+        $user = $request->filled('id')
+            ? $userQuery->find($request->id)
+            : $userQuery->where('email', $request->input('original_email'))->first();
+
+        if (!$user) {
+            return back()->withInput()->withErrors([
+                'id' => 'The selected user could not be found in your permitted pharmacy.',
+            ]);
+        }
+
+        $request->merge(['id' => $user->id]);
+
+        $this->validate($request, [
+            'id' => 'required|integer',
+            'name' => 'required|max:100',
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('users', 'email')->ignore($request->id),
+            ],
+            'role' => 'nullable|string',
+            'password' => 'nullable|confirmed|max:200',
+            'avatar' => 'nullable|file|image|mimes:jpg,jpeg,gif,png',
         ]);
-        $user->assignRole($request->role);
+
+        if ($request->filled('role')) {
+            abort_unless($isSuperAdmin || $actor->can('update-role'), 403);
+
+            if ($request->role === 'super-admin' && !$isSuperAdmin) {
+                abort(403);
+            }
+        }
+
+        $role = null;
+        if ($request->filled('role')) {
+            $role = Role::withoutGlobalScopes()
+                ->where('name', $request->role)
+                ->where('guard_name', 'web')
+                ->first();
+
+            if (!$role) {
+                return back()->withInput()->withErrors([
+                    'role' => 'The selected role does not exist.',
+                ]);
+            }
+        }
+
+        $updates = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'avatar' => $user->avatar,
+        ];
+
+        if ($request->filled('password')) {
+            $updates['password'] = Hash::make($request->password);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $avatarName = time() . '.' . $request->avatar->extension();
+            $request->avatar->move(public_path('storage/users'), $avatarName);
+            $updates['avatar'] = $avatarName;
+        }
+
+        $user->update($updates);
+
+        if ($role) {
+            $user->syncRoles([$role]);
+        }
         $notification =array(
             'message'=>"User has been updated!!!",
             'alert-type'=>'success'
@@ -154,7 +251,8 @@ class UserController extends Controller
 
     public function destroy(Request $request)
     {
-        $user = User::find($request->id);
+        $this->authorize('destroy-user');
+        $user = User::where('pharmacy_id', auth()->user()->pharmacy_id)->findOrFail($request->id);
         if($user->hasRole('super-admin')){
             $notification=array(
                 'message'=>"Super admin cannot be deleted",

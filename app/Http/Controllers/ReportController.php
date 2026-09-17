@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class ReportController extends Controller
 {
     public function index(){
+        $this->authorize('view-reports');
         $title = "generate Reports";
         return view('reports.reports',compact(
             'title',
@@ -18,6 +19,7 @@ class ReportController extends Controller
     }
 
     public function getData(Request $request){
+        $this->authorize('view-reports');
         $this->validate($request,[
             'from_date'=>'required',
             'to_date'=>'required',

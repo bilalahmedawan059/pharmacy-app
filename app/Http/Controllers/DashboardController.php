@@ -17,6 +17,12 @@ class DashboardController extends Controller
     public function index(){
         $title = "dashboard";
 
+        abort_unless(
+            auth()->user()->hasRole('super-admin')
+            || auth()->user()->can('view-dashboard')
+            || auth()->user()->can('view-sales'),
+            403
+        );
         $total_suppliers = Supplier::count();
         $total_medicines = Purchase::count();
         $available_medicines = Purchase::where('quantity', '>' , 5)->count();

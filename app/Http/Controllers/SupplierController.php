@@ -11,6 +11,7 @@ class SupplierController extends Controller
 
     public function index()
     {
+        $this->authorize('view-supplier');
         $title = "Suppliers";
         $suppliers = Supplier::get();
         return view('suppliers.suppliers', compact('title', 'suppliers'));
@@ -19,6 +20,7 @@ class SupplierController extends Controller
 
     public function create()
     {
+        $this->authorize('create-supplier');
         $title = "add supplier";
         $products = Product::get();
         return view('suppliers.add-supplier', compact(
@@ -29,6 +31,7 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create-supplier');
         $this->validate($request, [
             'name' => 'required',
             'product' => 'required',
@@ -64,9 +67,10 @@ class SupplierController extends Controller
 
     public function show(Request $request, $id)
     {
+        $this->authorize('update-supplier');
         $title = "edit Supplier";
         $products = Product::get();
-        $supplier = Supplier::find($id);
+        $supplier = Supplier::findOrFail($id);
         return view('suppliers.edit-supplier', compact(
             'title',
             'products',
@@ -77,6 +81,7 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
+        $this->authorize('update-supplier');
         $this->validate($request, [
             'name' => 'required',
             'product' => 'required',
@@ -88,7 +93,7 @@ class SupplierController extends Controller
         ]);
 
         try {
-            $supplier->update($request->all());
+            $supplier->update($request->only(['name', 'email', 'phone', 'company', 'address', 'product', 'description']));
             $notification = array(
                 'message' => "Supplier has been updated",
                 'alert-type' => 'success',
@@ -104,7 +109,8 @@ class SupplierController extends Controller
 
     public function destroy(Request $request)
     {
-        $supplier = Supplier::find($request->id);
+        $this->authorize('destroy-supplier');
+        $supplier = Supplier::findOrFail($request->id);
         $supplier->delete();
         $notification = array(
             'message' => "Supplier has been deleted",

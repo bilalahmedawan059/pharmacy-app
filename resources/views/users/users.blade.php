@@ -78,22 +78,25 @@
                                         <td>
                                             {{ $user->email }}
                                         </td>
-                                        @can('update-role')
-                                            <td>
-                                                @foreach ($user->getRoleNames() as $role)
-                                                    {{ $role }}
-                                                    <span data-role="{{ $role }}"></span>
-                                                @endforeach
-                                            </td>
-                                        @endcan
+                                        <td>
+                                            @forelse ($user->getRoleNames() as $role)
+                                                <span class="badge badge-info mr-1">{{ $role }}</span>
+                                            @empty
+                                                <span class="text-muted">No role assigned</span>
+                                            @endforelse
+                                        </td>
                                         <td>{{ date_format(date_create($user->created_at), 'd M,Y') }}</td>
 
                                         <td class="text-center">
                                             <div class="actions">
-                                                <a data-id="{{ $user->id }}" data-name="{{ $user->name }}"
+                                                <a data-id="{{ $user->id }}" data-user-id="{{ $user->id }}" data-name="{{ $user->name }}"
                                                     data-avatar="{{ $user->avatar }}"
-                                                    data-email="{{ $user->email }}" class="btn btn-sm btn-info editbtn"
-                                                    id="edit-user" data-toggle="modal" href="javascript:void(0)">
+                                                    data-email="{{ $user->email }}"
+                                                    data-original-email="{{ $user->email }}"
+                                                    data-role="{{ $user->getRoleNames()->first() }}"
+                                                    class="btn btn-sm btn-info editbtn"
+                                                    id="edit-user" data-toggle="modal" data-target="#edit_user"
+                                                    href="#edit_user">
                                                     <i class="fe fe-pencil"></i> Edit
                                                 </a>
                                                 <a data-id="{{ $user->id }}" href="javascript:void(0);"
@@ -210,6 +213,7 @@
                         @method("PUT")
                         <div class="row form-row">
                             <input type="hidden" name="id" id="edit_id">
+                            <input type="hidden" name="original_email" id="edit_original_email">
                             <div class="col-12">
                                 <div class="form-group">
                                     <label>Full Name</label>
@@ -280,23 +284,20 @@
     <script>
         $(document).ready(function() {
             $('#avatar').hide();
-            $('#datatable-export').on('click', '.editbtn', function() {
-                event.preventDefault();
-                // jQuery.noConflict();
-                // $('#edit_user').modal('show');
-                var id = $(this).data('id');
-                var name = $(this).data('name');
-                var email = $(this).data('email');
-                var role = $(this).data('role');
-                var avatar = $(this).data('avatar');
+            $('#edit_user').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var id = button.attr('data-user-id') || button.attr('data-id');
+                var name = button.attr('data-name');
+                var email = button.attr('data-email');
+                var originalEmail = button.attr('data-original-email') || email;
+                var role = button.attr('data-role');
                 $('#edit_id').val(id);
                 $('.edit_name').val(name);
                 $('.edit_email').val(email);
+                $('#edit_original_email').val(originalEmail);
                 $('.edit_role').val(role).trigger('change');
                 $('#avatar').show();
             });
-            //
-
 
         });
     </script>

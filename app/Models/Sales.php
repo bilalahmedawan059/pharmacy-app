@@ -7,13 +7,14 @@ use App\Models\Purchase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\BelongsToPharmacy;
 
 class Sales extends Model
 {
-    use HasFactory,SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToPharmacy;
 
     protected $fillable = [
-        'sale_transaction_id','product_id','quantity','total_price',
+        'sale_transaction_id','product_id','quantity','total_price','pharmacy_id',
     ];
 
     public function product(){

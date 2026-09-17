@@ -127,7 +127,7 @@
                                     class="icon feather icon-rotate-ccw text-c-blue mb-1 d-block"></i> --}}
                             </div>
                             <div class="col-sm-8 text-md-center">
-                                <h5>{{\DB::table('users')->count()}}</h5>
+                                <h5>{{ \App\Models\User::query()->when(!auth()->user()->hasRole('super-admin'), function ($query) { return $query->where('pharmacy_id', auth()->user()->pharmacy_id); })->count() }}</h5>
                                 <span>Users</span>
                             </div>
                         </div>

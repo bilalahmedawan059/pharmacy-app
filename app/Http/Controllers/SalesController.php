@@ -44,6 +44,7 @@ class SalesController extends Controller
 
     public function index()
     {
+        $this->authorize('view-sales');
         $title = "sales";
         $products = Product::with('purchase')->get();
         $sales = Sales::with('product.purchase')->latest()->get();
@@ -67,6 +68,7 @@ class SalesController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create-sales');
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer',
@@ -157,13 +159,15 @@ class SalesController extends Controller
 
     public function print(SaleTransaction $transaction)
     {
+        $this->authorize('view-sales');
         $transaction->load('lines.product.purchase', 'user');
         return view('sales.receipt', compact('transaction'));
     }
 
     public function destroy(Request $request)
     {
-        $sale = Sales::find($request->id);
+        $this->authorize('destroy-sale');
+        $sale = Sales::findOrFail($request->id);
         $sale->delete();
         $notification = array(
             'message' => "Sales has been deleted",

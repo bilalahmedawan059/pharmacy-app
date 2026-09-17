@@ -18,10 +18,16 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
+        'pharmacy_id',
+        'branch_id',
         'name',
         'email',
+        'cnic',
+        'phone',
         'password',
         'avatar',
+        'is_invited',
+        'invited_at',
     ];
 
     /**
@@ -41,7 +47,19 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_invited' => 'boolean',
+        'invited_at' => 'datetime',
     ];
+
+    public function pharmacy()
+    {
+        return $this->belongsTo(Pharmacy::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 
     /**
      * The channels the user receives notification broadcasts on.

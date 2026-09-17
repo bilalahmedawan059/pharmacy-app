@@ -1,5 +1,7 @@
-<form method="POST" action="{{ route('roles') }}">
+<form id="role-form" method="POST" action="{{ route('roles') }}">
     @csrf
+    <input type="hidden" name="id" id="edit_id">
+    <input type="hidden" name="_method" id="role_method" value="">
     <div class="row form-row">
         <div class="col-12">
             <div class="form-group">
@@ -7,13 +9,21 @@
                 <input type="text" name="role" class="form-control edit_role">
             </div>
             <div class="form-group">
-                <lable>Select Permissions</lable>
-                <select class="select2 form-select form-control edit_perms" name="permission[]"
-                    multiple="multiple">
+                <label>Select Permissions</label>
+                <div class="row">
                     @foreach ($permissions as $permission)
-                        <option value="{{ $permission->name }}">{{ $permission->name }}</option>
+                        <div class="col-md-6 mb-2">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input edit_perms"
+                                    id="permission_{{ $loop->index }}" name="permission[]"
+                                    value="{{ $permission->name }}">
+                                <label class="custom-control-label" for="permission_{{ $loop->index }}">
+                                    {{ $permission->name }}
+                                </label>
+                            </div>
+                        </div>
                     @endforeach
-                </select>
+                </div>
             </div>
         </div>
     </div>

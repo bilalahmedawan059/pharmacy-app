@@ -60,7 +60,7 @@
                     </li>
                     @endcan
 
-                    @can('view-access-control')
+                    @role('super-admin')
                     <li class="nav-item pcoded-hasmenu {{ route_is(('permissions')) || route_is(('add-permissions')) || route_is(('edit-permissions')) || route_is(('roles'))  ? 'active active-cover' : '' }}">
                         <a href="#"><i class="feather icon-lock"></i> <span> Access Control</span> <span class="menu-arrow"></span></a>
                         <ul class="pcoded-submenu">
@@ -72,7 +72,7 @@
                             @endcan
                         </ul>
                     </li>
-                    @endcan
+                    @endrole
 
                     @can('view-users')
                     <li class=" nav-item  {{ route_is('users') ? 'active active-cover' : '' }}">
@@ -81,6 +81,9 @@
                     @endcan
 
                     @auth
+                        <li class="nav-item {{ request()->is('branches*') ? 'active active-cover' : '' }}">
+                            <a href="{{ route('branches.create') }}"><i class="feather icon-map-pin"></i> <span> Branches</span></a>
+                        </li>
                         <li class="nav-item pcoded-hasmenu {{ route_is(('settings')) || route_is(('backup.index')) ? 'active active-cover' : '' }}">
                             <a href="#"><i class="feather icon-gears"></i> <span> System Settings</span> <span class="menu-arrow"></span></a>
                             <ul class="pcoded-submenu">
