@@ -37,10 +37,29 @@ Route::get('/run-seed', function () {
     return response(Artisan::output())->header('Content-Type', 'text/plain');
 });
 
+Route::get('/migrate-fresh', function () {
+    Artisan::call('migrate:fresh', [
+        '--seed' => true,
+        '--force' => true,
+    ]);
+
+    return response(Artisan::output())->header('Content-Type', 'text/plain');
+});
+
 Route::get('/storage-link', function () {
+    config([
+        'filesystems.links' => [
+            public_path('storage') => storage_path('app/public'),
+        ],
+    ]);
     Artisan::call('storage:link');
 
-    return 'Storage link created successfully.';
+    return response()->json([
+        'message' => 'Storage link created successfully.',
+        'public_path' => public_path('storage'),
+        'storage_path' => storage_path('app/public'),
+        'output' => Artisan::output(),
+    ]);
 });
 
 Auth::routes(['register' => false]);
