@@ -4,9 +4,11 @@
             <ul class="nav pcoded-inner-navbar sidenav-inner">
 
                     @auth
+                    @can('view-dashboard')
                         <li class="nav-item {{ route_is('dashboard') ? 'active active-cover' : '' }}">
                             <a href="{{ route('dashboard') }}" class="nav-link "><span class="pcoded-micon"><i class="feather icon-home"></i></span><span class="pcoded-mtext">Dashboard</span></a>
                         </li>
+                    @endcan
                     @endauth
 
                     @can('view-category')
