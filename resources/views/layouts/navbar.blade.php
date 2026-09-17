@@ -80,10 +80,12 @@
                     </li>
                     @endcan
 
-                    @auth
+                    @can('view-branches')
                         <li class="nav-item {{ request()->is('branches*') ? 'active active-cover' : '' }}">
-                            <a href="{{ route('branches.create') }}"><i class="feather icon-map-pin"></i> <span> Branches</span></a>
+                            <a href="{{ route('branches.index') }}"><i class="feather icon-map-pin"></i> <span> Branches</span></a>
                         </li>
+                    @endcan
+                    @auth
                         <li class="nav-item pcoded-hasmenu {{ route_is(('settings')) || route_is(('backup.index')) ? 'active active-cover' : '' }}">
                             <a href="#"><i class="feather icon-gears"></i> <span> System Settings</span> <span class="menu-arrow"></span></a>
                             <ul class="pcoded-submenu">

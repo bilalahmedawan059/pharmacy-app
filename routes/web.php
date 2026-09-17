@@ -127,7 +127,10 @@ Route::group(['middleware'=>['auth']],function (){
     Route::get('settings',[SettingController::class,'index'])->name('settings');
 
     Route::get('branches/create',[BranchController::class,'create'])->name('branches.create');
+    Route::get('branches',[BranchController::class,'index'])->name('branches.index');
     Route::post('branches',[BranchController::class,'store'])->name('branches.store');
+    Route::get('branches/{branch}/edit',[BranchController::class,'edit'])->name('branches.edit');
+    Route::put('branches/{branch}',[BranchController::class,'update'])->name('branches.update');
 
     Route::get('notification',[NotificationController::class,'markAsRead'])->name('mark-as-read');
     Route::get('notification-read',[NotificationController::class,'read'])->name('read');

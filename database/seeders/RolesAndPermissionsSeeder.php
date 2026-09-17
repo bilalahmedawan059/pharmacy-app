@@ -54,7 +54,7 @@ class RolesAndPermissionsSeeder extends Seeder
           'view-purchase', 'create-purchase', 'update-purchase', 'destroy-purchase',
           'view-supplier', 'create-supplier', 'update-supplier', 'destroy-supplier',
           'view-users', 'create-user', 'update-user', 'destroy-user',
-          'view-settings', 'view-profile', 'update-profile', 'update-password', 'view-notifications',
+          'view-settings', 'view-profile', 'update-profile', 'update-password', 'view-notifications', 'update-role',
         ],
         'branch-manager' => [
           'view-dashboard', 'view-branches', 'view-sales', 'create-sales', 'update-sales',

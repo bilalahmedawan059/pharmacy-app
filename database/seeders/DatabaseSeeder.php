@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Database\Seeders\UserSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\DemoDataSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,6 +20,7 @@ class DatabaseSeeder extends Seeder
             DeleteStorageDataSeeder::class,
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
+            DemoDataSeeder::class,
         ]);
     }
 }
