@@ -256,6 +256,21 @@ $(function () {
         $('.payment-method').removeClass('active');
         $(this).closest('.payment-method').addClass('active');
     });
+    window.resetSalesForm = function () {
+        Object.keys(cart).forEach(function (id) { delete cart[id]; });
+        $('#product_code, #medicine-search, #amount_received').val('');
+        $('#medicine-results').empty();
+        $('#product-dropdown').val('').trigger('change');
+        $('#discount_percent').val(0);
+        $('input[name="payment_method"][value="cash"]').prop('checked', true).trigger('change');
+        renderCart();
+        $('#product_code').focus();
+    };
+    $(document).on('click', '#add_new', function (event) {
+        event.preventDefault();
+        window.resetSalesForm();
+    });
+    $(document).on('reset-sales-form', window.resetSalesForm);
     renderCart();
 });
 </script>

@@ -20,15 +20,32 @@
 <div class="pos-sales-shell">
     <div class="pos-sales-main">
         @can('create-sales')
-        <div class="pos-sale-card">
-            <div class="pos-sale-card__header">
+        <div class="pos-sale-card card">
+            <div class="pos-sale-card__header card-header">
                 <div class="pos-sale-tab-group">
                     <button type="button" class="pos-sale-tab active">New Sale</button>
                     <button type="button" class="pos-sale-tab">Return</button>
                 </div>
-                <button type="button" id="add_new" class="pos-sale-add-btn">Add New</button>
+                <div class="pos-sale-header-actions">
+                    <button type="button" id="add_new" class="pos-sale-add-btn">Add New</button>
+                    <div class="btn-group card-option">
+                        <button type="button" class="btn dropdown-toggle btn-icon" data-toggle="dropdown"
+                            aria-haspopup="true" aria-expanded="false">
+                            <i class="feather icon-more-horizontal"></i>
+                        </button>
+                        <ul class="list-unstyled card-option dropdown-menu dropdown-menu-right">
+                            <li class="dropdown-item full-card"><a href="#!"><span><i class="feather icon-maximize"></i>
+                                        maximize</span><span style="display:none"><i class="feather icon-minimize"></i>
+                                        Restore</span></a>
+                            </li>
+                            <li class="dropdown-item minimize-card"><a href="#!"><span><i
+                                            class="feather icon-minus"></i> collapse</span><span style="display:none"><i
+                                            class="feather icon-plus"></i> expand</span></a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            <div class="pos-sale-card__body">
+            <div class="pos-sale-card__body card-body">
                 @include('sales.create')
             </div>
         </div>
@@ -147,6 +164,31 @@
 
         .pos-sale-card {
             overflow: hidden;
+        }
+
+        .pos-sale-card.full-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pos-sale-card.full-card .pos-sale-card__header {
+            flex: 0 0 auto;
+        }
+
+        .pos-sale-card.full-card .pos-sale-card__body {
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        html.sales-fullscreen-lock,
+        body.sales-fullscreen-lock,
+        body.sales-fullscreen-lock main,
+        body.sales-fullscreen-lock .pcoded-wrapper,
+        body.sales-fullscreen-lock .pcoded-content,
+        body.sales-fullscreen-lock .pcoded-inner-content,
+        body.sales-fullscreen-lock .main-body,
+        body.sales-fullscreen-lock .page-wrapper {
+            overflow: hidden !important;
         }
 
         .pos-sale-card__header {
@@ -461,12 +503,11 @@
                 $('.btn-block').text("Update Changes");
             });
 
-            $('#add_new').on('click', function() {
-                event.preventDefault();
-                $('#edit_id').val('');
-                $(".edit_product").val('').trigger('change');
-                $('.edit_quantity').val(1);
-                $('.btn-block').text("Save Changes");
+            $('.pos-sale-card .full-card').on('click', function() {
+                var isMaximized = $('.pos-sale-card').hasClass('full-card');
+                $('html, body').toggleClass('sales-fullscreen-lock', isMaximized);
+                $('main, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content, .main-body, .page-wrapper')
+                    .toggleClass('sales-fullscreen-lock', isMaximized);
             });
         });
     </script>
