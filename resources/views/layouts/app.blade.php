@@ -51,6 +51,27 @@
             color: var(--sales-ink);
         }
 
+        a:focus,
+        a:focus-visible,
+        button:focus,
+        button:focus-visible,
+        .btn:focus,
+        .btn:focus-visible,
+        .nav-link:focus,
+        .nav-link:focus-visible,
+        .dropdown-toggle:focus,
+        .dropdown-toggle:focus-visible,
+        .submenu-toggle:focus,
+        .submenu-toggle:focus-visible,
+        .form-control:focus,
+        .custom-select:focus,
+        .select2-selection:focus,
+        .select2-selection:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+            border-color: transparent !important;
+        }
+
         .pharmapos-app-shell {
             min-height: 100vh;
             background: #edf3f1;
@@ -254,6 +275,37 @@
 
     <script src="{{ asset('assets/backend/js/horizontal-menu.js') }}"></script>
     <script>
+        $(document).ready(function() {
+            const $sidebar = $('.pharmapos-sidebar');
+            const $toggle = $('#sidebarToggle');
+
+            $('.pharmapos-has-submenu').each(function() {
+                const $parent = $(this);
+                const isOpen = $parent.hasClass('open');
+
+                if (!isOpen) {
+                    $parent.find('> .pharmapos-submenu').hide();
+                }
+
+                $parent.find('> .pharmapos-item-wrap .submenu-toggle').on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $parent.toggleClass('open');
+                    $parent.find('> .pharmapos-submenu').slideToggle(180);
+                });
+            });
+
+            if (localStorage.getItem('pharmaposSidebarCollapsed') === 'true') {
+                $sidebar.addClass('collapsed');
+            }
+
+            $toggle.on('click', function() {
+                $sidebar.toggleClass('collapsed');
+                const isCollapsed = $sidebar.hasClass('collapsed');
+                localStorage.setItem('pharmaposSidebarCollapsed', String(isCollapsed));
+            });
+        });
+
         (function() {
             if ($('#layout-sidenav').hasClass('sidenav-horizontal') || window.layoutHelpers.isSmallScreen()) {
                 return;

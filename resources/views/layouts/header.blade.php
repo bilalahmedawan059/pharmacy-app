@@ -1,10 +1,12 @@
 <header class="navbar pcoded-header navbar-expand-lg navbar-light header-dark">
     <div class="container">
         <div class="m-header">
-            {{-- <a class="mobile-menu" id="mobile-collapse" href="#!"><span></span></a> --}}
-                <a href="{{route('dashboard')}}" class="b-brand">
-                <!-- ========   change your logo hear   ============ -->
-			    <img class="logo" width="120" style="width: 45px" src="@if(!empty(AppSettings::get('logo'))) {{asset('storage/'.AppSettings::get('logo'))}} @else{{asset('img/logo1.png')}} @endif" alt="Logo">
+            <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="feather icon-menu"></i>
+            </button>
+
+            <a href="{{route('dashboard')}}" class="b-brand">
+                <img class="logo" width="120" style="width: 45px" src="@if(!empty(AppSettings::get('logo'))) {{asset('storage/'.AppSettings::get('logo'))}} @else{{asset('img/logo1.png')}} @endif" alt="Logo">
                 <img src="{{ asset('assets/backend/images/logo-icon.png') }}" alt="" class="logo-thumb">
             </a>
             <a href="#!" class="mob-toggler">
@@ -189,8 +191,19 @@
         color: rgba(255,255,255,0.9) !important;
     }
 
+    .pcoded-header .dropdown-toggle::after {
+        display: none !important;
+        content: none !important;
+    }
+
+    .pcoded-header .dropdown-toggle .feather,
+    .pcoded-header .dropdown-toggle .icon {
+        font-size: 17px;
+        line-height: 1;
+    }
+
     .pcoded-header .navbar-nav.ml-auto {
-        gap: 16px;
+        gap: 14px;
         align-items: center;
     }
 
@@ -206,27 +219,57 @@
     }
 
     .pcoded-header .dropdown-toggle {
+        position: relative;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         border-radius: 10px;
+        background: transparent;
+        border: 0;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .sidebar-toggle {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        cursor: pointer;
+        opacity: 0.95;
+    }
+
+    .sidebar-toggle:hover,
+    .pcoded-header .dropdown-toggle:hover {
         background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.06);
     }
 
     .pcoded-header .badge-danger {
-        background: #e15454 !important;
-        border-radius: 999px;
-        font-size: 10px;
-        min-width: 18px;
-        height: 18px;
-        line-height: 18px;
-        padding: 0 6px;
-        position: relative;
-        top: -8px;
-        left: -6px;
+        position: absolute;
+        top: -5px;
+        right: -3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 16px;
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        border-radius: 50%;
+        background: #e84141 !important;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 0 0 2px rgba(17, 27, 27, 0.9);
     }
 
     .pcoded-header .pro-head {
