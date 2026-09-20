@@ -153,4 +153,91 @@
 
         </div>
     </div>
+
+<style>
+    .pcoded-header.header-dark {
+        background: linear-gradient(180deg, #111b1b 0%, #0d1717 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 8px 26px rgba(8, 17, 17, 0.18);
+        min-height: 72px;
+    }
+
+    .pcoded-header .container {
+        max-width: 100%;
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .pcoded-header .m-header {
+        display: flex;
+        align-items: center;
+        min-height: 72px;
+    }
+
+    .pcoded-header .b-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .pcoded-header .nav-link,
+    .pcoded-header .dropdown-toggle,
+    .pcoded-header .icon,
+    .pcoded-header .feather {
+        color: rgba(255,255,255,0.9) !important;
+    }
+
+    .pcoded-header .navbar-nav.ml-auto {
+        gap: 16px;
+        align-items: center;
+    }
+
+    .pcoded-header .nav-link {
+        padding: 10px 12px;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+
+    .pcoded-header .nav-link:hover,
+    .pcoded-header .dropdown-toggle:hover {
+        background: rgba(255,255,255,0.06);
+    }
+
+    .pcoded-header .dropdown-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .pcoded-header .badge-danger {
+        background: #e15454 !important;
+        border-radius: 999px;
+        font-size: 10px;
+        min-width: 18px;
+        height: 18px;
+        line-height: 18px;
+        padding: 0 6px;
+        position: relative;
+        top: -8px;
+        left: -6px;
+    }
+
+    .pcoded-header .pro-head {
+        background: #0f1d1d;
+        color: #fff;
+    }
+
+    .pcoded-header .profile-notification {
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+</style>
 </header>

@@ -45,17 +45,37 @@
             color: var(--sales-ink);
         }
 
-        .pcoded-main-container,
-        .pcoded-wrapper,
-        .pcoded-content,
-        .pcoded-inner-content,
-        .main-body,
-        .page-wrapper {
+        body {
+            margin: 0;
+            background: #edf3f1;
+            color: var(--sales-ink);
+        }
+
+        .pharmapos-app-shell {
+            min-height: 100vh;
+            background: #edf3f1;
+        }
+
+        .pharmapos-layout {
+            display: flex;
+            min-height: calc(100vh - 72px);
+            background: #edf3f1;
+        }
+
+        .pharmapos-main {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 22px 26px;
+        }
+
+        .pharmapos-main-inner {
             background: transparent;
+            min-height: 100%;
         }
 
         .page-wrapper {
-            padding-top: 8px;
+            padding-top: 0;
+            background: transparent;
         }
 
         .card,
@@ -207,30 +227,20 @@
         </div>
     </div>
     <!-- [ Pre-loader ] End -->
-    <!-- [ navigation menu ] start -->
-    @include('layouts.navbar')
-    <!-- [ navigation menu ] end -->
-    <!-- [ Header ] start -->
-    @include('layouts.header')
-    <!-- [ Header ] end -->
-    {{-- <div id="app"> --}}
+    <div class="pharmapos-app-shell">
+        @include('layouts.header')
 
+        <div class="pharmapos-layout">
+            @include('layouts.navbar')
 
-    <main class="py-4 mt-5">
-        <div class="pcoded-wrapper container mt-5">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            @include('flash')
-                            @yield('content')
-                        </div>
-                    </div>
+            <main class="pharmapos-main">
+                <div class="pharmapos-main-inner">
+                    @include('flash')
+                    @yield('content')
                 </div>
-            </div>
+            </main>
         </div>
-    </main>
-    {{-- </div> --}}
+    </div>
 
     <!-- Required Js -->
     <script src="{{ asset('assets/backend/js/vendor-all.min.js') }}"></script>
