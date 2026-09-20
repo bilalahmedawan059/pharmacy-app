@@ -19,11 +19,12 @@ class RegisterController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('guest');
+        $this->middleware('auth');
     }
 
     public function index(Request $request)
     {
+        $this->authorizeSuperAdmin();
         $data = $request->session()->get('onboarding', []);
         $step = (int) $request->query('step', $request->session()->get('onboarding_step', 1));
         $step = max(1, min($step, 4));
@@ -34,6 +35,7 @@ class RegisterController extends Controller
 
     public function step(Request $request, $step)
     {
+        $this->authorizeSuperAdmin();
         $step = (int) $step;
         abort_unless(in_array($step, [1, 2, 3], true), 404);
 
@@ -51,6 +53,7 @@ class RegisterController extends Controller
 
     public function launch(Request $request)
     {
+        $this->authorizeSuperAdmin();
         $data = $request->session()->get('onboarding', []);
         abort_unless(isset($data['pharmacy'], $data['branches'], $data['staff']), 422);
         $request->validate(['confirm' => ['accepted']]);
@@ -126,13 +129,17 @@ class RegisterController extends Controller
 
         $request->session()->forget('onboarding');
         $request->session()->forget('onboarding_step');
-        auth()->login($owner);
 
         $message = $failedInvites
             ? 'Pharmacy launched successfully, but ' . $failedInvites . ' staff invitation(s) could not be sent. Check your mail settings and resend them.'
             : 'Pharmacy launched successfully. Staff invitations have been sent.';
 
         return redirect()->route('dashboard')->with('message', $message);
+    }
+
+    private function authorizeSuperAdmin()
+    {
+        abort_unless(auth()->user()->hasRole('super-admin'), 403);
     }
 
     private function validatePharmacy(Request $request)

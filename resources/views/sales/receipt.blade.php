@@ -34,12 +34,15 @@
         <thead><tr><th>Medicine</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead>
         <tbody>
         @foreach ($transaction->lines as $line)
+            @php($remainingQuantity = $line->quantity - $line->returned_quantity)
+            @if ($remainingQuantity > 0)
             <tr>
                 <td>{{ optional($line->product->purchase)->name ?: 'Medicine' }}</td>
-                <td>{{ $line->quantity }}</td>
-                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format($line->total_price / $line->quantity, 2) }}</td>
-                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format($line->total_price, 2) }}</td>
+                <td>{{ $remainingQuantity }}</td>
+                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format($line->quantity > 0 ? $line->total_price / $line->quantity : 0, 2) }}</td>
+                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format(($line->quantity > 0 ? $line->total_price / $line->quantity : 0) * $remainingQuantity, 2) }}</td>
             </tr>
+            @endif
         @endforeach
         </tbody>
     </table>

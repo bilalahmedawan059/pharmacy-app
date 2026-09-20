@@ -27,6 +27,13 @@
             
             @auth
                 <ul class="navbar-nav ml-auto">
+                    @role('super-admin')
+                    <li class="nav-item mr-3">
+                        <a href="{{ route('register') }}" class="nav-link" title="Pharmacy onboarding">
+                            <i class="feather icon-plus-circle"></i> Onboarding
+                        </a>
+                    </li>
+                    @endrole
                     <li>
                         <div class="dropdown">
                             <a class="dropdown-toggle" href="#" data-toggle="dropdown">

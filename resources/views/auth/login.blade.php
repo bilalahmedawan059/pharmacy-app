@@ -61,7 +61,6 @@
                     </form>
 						<hr>
 						<p class="mb-2 text-muted">Forgot password? <a href="{{ route('password.request') }}" class="f-w-400">Reset</a></p>
-						<p class="mb-0 text-muted">Don’t have an account? <a href="{{ route('register') }}" class="f-w-400">Signup</a></p>
 					</div>
 				</div>
 			</div>

@@ -19,12 +19,14 @@
 </div> 
 <div class="pos-sales-shell">
     <div class="pos-sales-main">
-        @can('create-sales')
+        @canany(['create-sales', 'update-sales'])
         <div class="pos-sale-card card">
             <div class="pos-sale-card__header card-header">
                 <div class="pos-sale-tab-group">
-                    <button type="button" class="pos-sale-tab active">New Sale</button>
-                    <button type="button" class="pos-sale-tab">Return</button>
+                    <button type="button" class="pos-sale-tab {{ $returnTransaction ? '' : 'active' }}" data-sale-panel="new-sale-panel" onclick="document.querySelectorAll('[data-sale-panel]').forEach(function(button){button.classList.remove('active');}); this.classList.add('active'); document.getElementById('new-sale-panel').style.display='block'; document.getElementById('return-sale-panel').style.display='none';">New Sale</button>
+                    @can('update-sales')
+                    <button type="button" class="pos-sale-tab {{ $returnTransaction ? 'active' : '' }}" data-sale-panel="return-sale-panel" onclick="document.querySelectorAll('[data-sale-panel]').forEach(function(button){button.classList.remove('active');}); this.classList.add('active'); document.getElementById('new-sale-panel').style.display='none'; document.getElementById('return-sale-panel').style.display='block';">Return</button>
+                    @endcan
                 </div>
                 <div class="pos-sale-header-actions">
                     <button type="button" id="add_new" class="pos-sale-add-btn">Add New</button>
@@ -46,10 +48,56 @@
                 </div>
             </div>
             <div class="pos-sale-card__body card-body">
-                @include('sales.create')
+                @can('create-sales')
+                <div id="new-sale-panel" style="display:{{ $returnTransaction ? 'none' : 'block' }}">
+                    @include('sales.create')
+                </div>
+                @endcan
+                @can('update-sales')
+                <div id="return-sale-panel" style="display:{{ $returnTransaction ? 'block' : 'none' }}">
+                    <form method="GET" action="{{ route('sales') }}" class="mb-3">
+                        <div class="form-group">
+                            <label for="return-invoice">Invoice</label>
+                            <select id="return-invoice" name="return_transaction_id" class="form-control" required>
+                                <option value="">Select invoice</option>
+                                @foreach ($transactions as $transaction)
+                                    <option value="{{ $transaction->id }}" {{ optional($returnTransaction)->id === $transaction->id ? 'selected' : '' }}>{{ $transaction->invoice_number }} ({{ $transaction->created_at->format('d M Y') }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-block">Load invoice items</button>
+                    </form>
+                    @if ($returnTransaction)
+                        <form method="POST" action="{{ route('sales.transaction.return', $returnTransaction) }}" id="return-sale-form">
+                            @csrf
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead><tr><th>Medicine</th><th>Available</th><th>Return quantity</th></tr></thead>
+                                    <tbody>
+                                    @foreach ($returnTransaction->lines as $line)
+                                        @php($availableQuantity = $line->quantity - $line->returned_quantity)
+                                        @if ($availableQuantity > 0)
+                                            <tr>
+                                                <td>{{ optional($line->product->purchase)->name ?: 'Medicine' }}</td>
+                                                <td>{{ $availableQuantity }}</td>
+                                                <td><input type="number" class="form-control" name="returns[{{ $line->id }}]" min="0" max="{{ $availableQuantity }}" value="0"></td>
+                                            </tr>
+                                        @endif
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if ($errors->has('returns'))<div class="alert alert-danger mt-3">{{ $errors->first('returns') }}</div>@endif
+                            <button type="submit" class="btn btn-primary btn-block">Process selected return</button>
+                        </form>
+                    @else
+                        <p class="text-muted">Select an invoice to view its returnable items.</p>
+                    @endif
+                </div>
+                @endcan
             </div>
         </div>
-        @endcan
+        @endcanany
     </div>
 
     <aside class="pos-sales-sidebar">
@@ -65,7 +113,7 @@
                             <span class="pos-invoice-date">{{ $transaction->created_at->format('d M, Y') }}</span>
                         </div>
                         <div class="pos-invoice-item__row">
-                            <span>{{ $transaction->lines->sum('quantity') }} Items</span>
+                            <span>{{ $transaction->lines->sum(function ($line) { return $line->quantity - $line->returned_quantity; }) }} Items</span>
                             <span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->total, 2) }}</span>
                         </div>
                         <div class="pos-invoice-item__row muted">
@@ -491,6 +539,15 @@
     <script>
          $(document).ready(function() {
             $('.select2').select2({ width: '100%' });
+
+            $(document).on('click', '[data-sale-panel]', function (event) {
+                event.preventDefault();
+                var panel = $(this).attr('data-sale-panel');
+                $('[data-sale-panel]').removeClass('active');
+                $(this).addClass('active');
+                $('#new-sale-panel, #return-sale-panel').hide();
+                $('#' + panel).show();
+            });
 
             $('#datatable-export').on('click', '.editbtn', function() {
                 event.preventDefault();

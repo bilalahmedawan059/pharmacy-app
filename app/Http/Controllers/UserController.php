@@ -25,10 +25,18 @@ class UserController extends Controller
         $users = $usersQuery->get();
         $roles = Role::query()->where('name', '!=', 'super-admin')->orderBy('name')->get();
         $pharmacies = auth()->user()->hasRole('super-admin')
-            ? Pharmacy::orderBy('business_name')->get()
-            : Pharmacy::whereKey(auth()->user()->pharmacy_id)->get();
+            ? Pharmacy::with('branches')->orderBy('business_name')->get()
+            : Pharmacy::with('branches')->whereKey(auth()->user()->pharmacy_id)->get();
+        $pharmacyBranches = $pharmacies->map(function ($pharmacy) {
+            return [
+                'id' => $pharmacy->id,
+                'branches' => $pharmacy->branches->map(function ($branch) {
+                    return ['id' => $branch->id, 'name' => $branch->name];
+                })->values(),
+            ];
+        })->values();
         return view('users.users',compact(
-            'title','users','roles','pharmacies'
+            'title','users','roles','pharmacies','pharmacyBranches'
         ));
     }
 
@@ -46,7 +54,8 @@ class UserController extends Controller
             'name'=>'required|max:100',
             'email'=>'required|email',
             'role'=>'required',
-            'pharmacy_id'=>[$isSuperAdmin ? 'required' : 'nullable', 'integer', 'exists:pharmacies,id'],
+            'pharmacy_id'=>['required', 'integer', 'exists:pharmacies,id'],
+            'branch_id'=>['required', 'integer', 'exists:branches,id'],
             'password'=>'required|confirmed|max:200',
             'avatar'=>'file|image|mimes:jpg,jpeg,gif,png',
         ]);

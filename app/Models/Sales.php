@@ -14,7 +14,12 @@ class Sales extends Model
     use HasFactory, SoftDeletes, BelongsToPharmacy;
 
     protected $fillable = [
-        'sale_transaction_id','product_id','quantity','total_price','pharmacy_id',
+        'sale_transaction_id','product_id','quantity','returned_quantity','total_price','pharmacy_id',
+    ];
+
+    protected $casts = [
+        'quantity' => 'integer',
+        'returned_quantity' => 'integer',
     ];
 
     public function product(){

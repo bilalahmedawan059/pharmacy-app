@@ -49,12 +49,17 @@ class SalesController extends Controller
         $products = Product::with('purchase')->get();
         $sales = Sales::with('product.purchase')->latest()->get();
         $transactions = SaleTransaction::with('lines.product.purchase', 'user')->latest()->get();
-
+        $returnTransaction = null;
+        if (request()->filled('return_transaction_id')) {
+            $returnTransaction = SaleTransaction::with('lines.product.purchase')
+                ->find(request('return_transaction_id'));
+        }
         return view('sales.sales', compact(
             'title',
             'products',
             'sales',
-            'transactions'
+            'transactions',
+            'returnTransaction'
         ));
     }
 
@@ -162,6 +167,73 @@ class SalesController extends Controller
         $this->authorize('view-sales');
         $transaction->load('lines.product.purchase', 'user');
         return view('sales.receipt', compact('transaction'));
+    }
+
+    public function return(Request $request, SaleTransaction $transaction)
+    {
+        $this->authorize('update-sales');
+        $request->validate([
+            'returns' => 'required|array|min:1',
+            'returns.*' => 'nullable|integer|min:0',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $transaction) {
+                $transaction = SaleTransaction::whereKey($transaction->id)
+                    ->with('lines.product')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $lines = $transaction->lines()->lockForUpdate()->get()->keyBy('id');
+                $returnedSubtotal = 0;
+
+                foreach ($request->input('returns', []) as $lineId => $returnQuantity) {
+                    $returnQuantity = (int) $returnQuantity;
+                    if ($returnQuantity === 0) {
+                        continue;
+                    }
+
+                    $line = $lines->get((int) $lineId);
+                    if (!$line) {
+                        throw new \DomainException('The selected sale line is invalid.');
+                    }
+                    $availableQuantity = $line->quantity - $line->returned_quantity;
+                    if ($returnQuantity > $availableQuantity) {
+                        throw new \DomainException('Return quantity cannot exceed the quantity sold.');
+                    }
+
+                    $purchase = Purchase::whereKey($line->product->purchase_id)->lockForUpdate()->firstOrFail();
+                    $unitPrice = $line->quantity > 0 ? (float) $line->total_price / $line->quantity : 0;
+                    $line->increment('returned_quantity', $returnQuantity);
+                    $purchase->increment('quantity', $returnQuantity);
+                    $returnedSubtotal += $unitPrice * $returnQuantity;
+                }
+
+                if ($returnedSubtotal <= 0) {
+                    throw new \DomainException('Select at least one item to return.');
+                }
+
+                $originalSubtotal = (float) $transaction->subtotal;
+                $discountRate = $originalSubtotal > 0 ? (float) $transaction->discount / $originalSubtotal : 0;
+                $remainingSubtotal = $lines->sum(function ($line) {
+                    $unitPrice = $line->quantity > 0 ? (float) $line->total_price / $line->quantity : 0;
+                    return $unitPrice * ($line->quantity - $line->returned_quantity);
+                });
+                $discount = round($remainingSubtotal * $discountRate, 2);
+                $total = round($remainingSubtotal - $discount, 2);
+
+                $transaction->update([
+                    'subtotal' => round($remainingSubtotal, 2),
+                    'discount' => $discount,
+                    'total' => $total,
+                    'change_amount' => round(max((float) $transaction->amount_received - $total, 0), 2),
+                    'payment_status' => $total <= 0 ? 'refunded' : 'partially_returned',
+                ]);
+            });
+        } catch (\DomainException $exception) {
+            return back()->withErrors(['returns' => $exception->getMessage()]);
+        }
+
+        return back()->with(['message' => 'Items returned and stock restored successfully.', 'alert-type' => 'success']);
     }
 
     public function destroy(Request $request)

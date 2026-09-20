@@ -168,6 +168,28 @@
                             </div>
                             <div class="col-12">
                                 <div class="form-group">
+                                    <label>Pharmacy</label>
+                                    <select class="select2 form-select form-control add_pharmacy" name="pharmacy_id" required {{ auth()->user()->hasRole('super-admin') ? '' : 'disabled' }}>
+                                        <option value="">Select pharmacy</option>
+                                        @foreach ($pharmacies as $pharmacy)
+                                            <option value="{{ $pharmacy->id }}" {{ !auth()->user()->hasRole('super-admin') ? 'selected' : '' }}>{{ $pharmacy->business_name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @if (!auth()->user()->hasRole('super-admin'))
+                                        <input type="hidden" name="pharmacy_id" value="{{ auth()->user()->pharmacy_id }}">
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label>Branch</label>
+                                    <select class="select2 form-select form-control add_branch" name="branch_id" required>
+                                        <option value="">Select branch</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
                                     <label>Picture</label>
                                     <input type="file" name="avatar">
                                 </div>

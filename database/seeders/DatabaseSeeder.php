@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
-            DeleteStorageDataSeeder::class,
+            // DeleteStorageDataSeeder::class,
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
             DemoDataSeeder::class,

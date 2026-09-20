@@ -69,11 +69,6 @@ Auth::routes(['register' => false]);
 Route::group(['middleware'=>['guest']],function (){
     Route::get('login',[LoginController::class,'index'])->name('login');
     Route::post('login',[LoginController::class,'login']);
-    Route::get('register',[RegisterController::class,'index'])->name('register');
-    Route::post('register/step/{step}',[RegisterController::class,'step'])->name('register.step');
-    Route::post('register/launch',[RegisterController::class,'launch'])->name('register.launch');
-
-
 
     Route::get('forgot-password',[ForgotPasswordController::class,'index'])->name('forgot-password');
     Route::post('forgot-password',[ForgotPasswordController::class,'reset']);
@@ -82,6 +77,10 @@ Route::group(['middleware'=>['guest']],function (){
 Route::group(['middleware'=>['auth']],function (){
     Route::get('home',[DashboardController::class,'index'])->name('dashboard');
     Route::get('/', [DashboardController::class,'index']);
+
+    Route::get('register',[RegisterController::class,'index'])->name('register');
+    Route::post('register/step/{step}',[RegisterController::class,'step'])->name('register.step');
+    Route::post('register/launch',[RegisterController::class,'launch'])->name('register.launch');
 
     Route::get('logout', function () {
         Auth::logout();
@@ -120,6 +119,7 @@ Route::group(['middleware'=>['auth']],function (){
     Route::post('sales',[SalesController::class,'store']);
     Route::delete('sales',[SalesController::class,'destroy']);
     Route::get('sales/transactions/{transaction}/print',[SalesController::class,'print'])->name('sales.transaction.print');
+    Route::post('sales/transactions/{transaction}/return',[SalesController::class,'return'])->name('sales.transaction.return');
 
     Route::get('sales-auto',[SalesController::class,'index_Auto'])->name('sales-auto');
     Route::post('/barcode', [SalesController::class, 'getProductByBarcode'])->name('getProductByBarcode');
