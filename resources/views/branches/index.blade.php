@@ -24,7 +24,7 @@
                         <div class="col-6"><small class="text-muted d-block">Sales total</small><strong>{{ number_format((float) ($sales->sales_total ?? 0), 2) }}</strong></div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-sm mb-0">
+                        <table data-export-type="branches" class="js-searchable-table js-exportable-table table table-sm mb-0">
                             <thead><tr><th>Branch</th><th>City</th><th>Users</th><th>Sales</th><th>Total</th><th>Action</th></tr></thead>
                             <tbody>
                                 @forelse ($pharmacy->branches as $branch)

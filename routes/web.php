@@ -15,6 +15,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\NotificationController;
@@ -156,6 +157,7 @@ Route::group(['middleware'=>['auth']],function (){
 
     Route::get('reports',[ReportController::class,'index'])->name('reports');
     Route::post('reports',[ReportController::class,'getData']);
+    Route::get('exports/{dataset}/{format}', [ExportController::class, 'download'])->name('exports.download');
 
 
     Route::get('backup', [BackupController::class,'index'])->name('backup.index');

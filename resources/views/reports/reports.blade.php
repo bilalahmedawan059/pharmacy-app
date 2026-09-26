@@ -110,7 +110,7 @@
                         <!--  Sales -->
 
                                 <div class="table-responsive">
-                                    <table id="datatable-export" class="table table-hover table-center mb-0">
+                                    <table id="datatable-export" data-export-type="report-sales" data-from-date="{{ request('from_date') }}" data-to-date="{{ request('to_date') }}" class="js-searchable-table js-exportable-table table table-hover table-center mb-0">
                                         <thead>
                                             <tr>
                                                 <th>Medicine Name</th>
@@ -142,7 +142,7 @@
                     @isset($products)
                         <!-- Products -->
                                 <div class="table-responsive">
-                                    <table id="datatable-export" class="table table-hover table-center mb-0">
+                                    <table id="datatable-export" data-export-type="report-products" data-from-date="{{ request('from_date') }}" data-to-date="{{ request('to_date') }}" class="js-searchable-table js-exportable-table table table-hover table-center mb-0">
                                         <thead>
                                             <tr>
                                                 <th>Medicine Name</th>
@@ -191,7 +191,7 @@
                     @isset($purchases)
                         <!-- Purchases-->
                                 <div class="table-responsive">
-                                    <table id="datatable-export" class="table table-hover table-center mb-0">
+                                    <table id="datatable-export" data-export-type="report-purchases" data-from-date="{{ request('from_date') }}" data-to-date="{{ request('to_date') }}" class="js-searchable-table js-exportable-table table table-hover table-center mb-0">
                                         <thead>
                                             <tr>
                                                 <th>Medicine</th>

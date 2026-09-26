@@ -57,7 +57,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="datatable-export" class="table table-hover table-center mb-0">
+                        <table id="datatable-export" data-export-type="sales" class="js-searchable-table js-exportable-table table table-hover table-center mb-0">
                             <thead>
                                 <tr>
                                     <th>Medicine Name</th>
@@ -91,7 +91,7 @@
                                                         <label class="badge badge-danger"> Out of Stock</label>
                                                         @endif
                                                     @endcan
-                                                    @can('destroy-sales')
+                                                    @can('destroy-sale')
                                                         <a data-id="{{ $sale->id }}" href="javascript:void(0);"
                                                             class="btn btn-sm btn-danger deletebtn" data-toggle="modal">
                                                             <i class="fe fe-trash"></i> Delete

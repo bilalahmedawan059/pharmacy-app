@@ -4,10 +4,7 @@ namespace App\Listeners;
 
 use App\Events\MedicineOutStock;
 use App\Models\User;
-use App\Notifications\SendNotifyStockAlertNotication;
 use App\Notifications\SendNotifyStockAlertNotification;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 
 class SendNotifyStockAlertListener
 {
@@ -29,8 +26,13 @@ class SendNotifyStockAlertListener
      */
     public function handle(MedicineOutStock $event)
     {
-        $users = User::get();
-        foreach($users as $user){
+        $pharmacyId = $event->data->pharmacy_id;
+        if (!$pharmacyId) {
+            return;
+        }
+
+        $users = User::where('pharmacy_id', $pharmacyId)->get();
+        foreach ($users as $user) {
             $user->notify(new SendNotifyStockAlertNotification($event->data));
         }
     }

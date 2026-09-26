@@ -79,19 +79,39 @@
 
         .pharmapos-layout {
             display: flex;
-            min-height: calc(100vh - 72px);
+            min-height: 100vh;
             background: #edf3f1;
         }
 
         .pharmapos-main {
             flex: 1;
             min-width: 0;
-            padding: 20px 22px 26px;
+            padding: 0 22px 26px;
+        }
+
+        .pharmapos-main > .pcoded-header {
+            position: relative;
+            top: auto;
+            right: auto;
+            left: auto;
+            width: auto;
+            margin: 0 -22px 20px;
+            box-sizing: border-box;
         }
 
         .pharmapos-main-inner {
             background: transparent;
-            min-height: 100%;
+            /* min-height: 100%; */
+        }
+
+        .pharmapos-main-inner.dashboard-page {
+            padding: 12px 12px 24px;
+        }
+
+        @media (max-width: 767px) {
+            .pharmapos-main-inner.dashboard-page {
+                padding: 8px 4px 20px;
+            }
         }
 
         .page-wrapper {
@@ -151,6 +171,24 @@
         .table th {
             border-color: #e8eff4;
             vertical-align: middle;
+        }
+
+        .table-search-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .table-search-control input {
+            width: min(100%, 320px);
+        }
+
+        .table-export-buttons {
+            display: flex;
+            gap: 8px;
         }
 
         .form-control,
@@ -249,13 +287,12 @@
     </div>
     <!-- [ Pre-loader ] End -->
     <div class="pharmapos-app-shell">
-        @include('layouts.header')
-
         <div class="pharmapos-layout">
             @include('layouts.navbar')
 
             <main class="pharmapos-main">
-                <div class="pharmapos-main-inner">
+                @include('layouts.header')
+                <div class="pharmapos-main-inner {{ request()->routeIs('dashboard') || request()->path() === '/' ? 'dashboard-page' : '' }}">
                     @include('flash')
                     @yield('content')
                 </div>
@@ -370,6 +407,75 @@
     </script>
 
     <script src="{{ asset('assets/backend/js/analytics.js') }}"></script>
+
+    <script>
+        $(function() {
+            var exportUrlTemplate = @json(route('exports.download', ['dataset' => '__DATASET__', 'format' => '__FORMAT__']));
+            var exportedTypes = {};
+
+            $('table.js-searchable-table, table.js-exportable-table, .js-exportable-list').each(function() {
+                var element = this;
+                var $element = $(element);
+                var isTable = element.tagName === 'TABLE';
+                var $toolbar = $('<div class="table-search-control"></div>');
+
+                if (isTable && $element.hasClass('js-searchable-table')) {
+                    var $rows = $element.find('tbody tr');
+                    var $search = $('<input>', {
+                        type: 'search',
+                        class: 'form-control',
+                        placeholder: 'Search records...',
+                        'aria-label': 'Search records'
+                    });
+
+                    $toolbar.append($search);
+                    $search.on('input', function() {
+                        var query = this.value.trim().toLocaleLowerCase();
+                        $rows.each(function() {
+                            $(this).toggle(this.textContent.toLocaleLowerCase().includes(query));
+                        });
+                    });
+                }
+
+                if ($element.hasClass('js-exportable-list') || $element.hasClass('js-exportable-table')) {
+                    var exportType = $element.attr('data-export-type');
+                    if (exportType && !exportedTypes[exportType]) {
+                        exportedTypes[exportType] = true;
+                        var $buttons = $('<div class="table-export-buttons"></div>');
+                        ['xlsx', 'csv'].forEach(function(format) {
+                            var url = exportUrlTemplate
+                                .replace('__DATASET__', encodeURIComponent(exportType))
+                                .replace('__FORMAT__', format);
+                            var query = [];
+                            var fromDate = $element.attr('data-from-date');
+                            var toDate = $element.attr('data-to-date');
+                            if (fromDate) query.push('from_date=' + encodeURIComponent(fromDate));
+                            if (toDate) query.push('to_date=' + encodeURIComponent(toDate));
+                            if (query.length) url += '?' + query.join('&');
+
+                            $('<a>', {
+                                class: 'btn btn-sm btn-outline-primary',
+                                href: url,
+                                text: format === 'xlsx' ? 'Excel' : 'CSV',
+                                'aria-label': 'Export as ' + (format === 'xlsx' ? 'Excel' : 'CSV')
+                            }).appendTo($buttons);
+                        });
+                        var exportTarget = $element.attr('data-export-target');
+                        if (exportTarget) {
+                            $(exportTarget).append($buttons);
+                        } else {
+                            $toolbar.append($buttons);
+                        }
+                    }
+                }
+
+                if ($toolbar.children().length) {
+                    var $anchor = isTable ? $element.closest('.table-responsive') : $element;
+                    $toolbar.insertBefore($anchor);
+                }
+            });
+        });
+    </script>
 
     @stack('page-js')
     @yield('script')

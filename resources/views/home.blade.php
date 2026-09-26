@@ -209,7 +209,7 @@
 
             <div class="col-md-12 card card-table">
                 <div class="card-header">
-                    <h5>Today's Sales</h5>
+                    <h5>All Sales</h5>
                     <div class="card-header-right">
                         <div class="btn-group card-option">
                             <button type="button" class="btn dropdown-toggle btn-icon" data-toggle="dropdown"
@@ -233,11 +233,34 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <div class="dashboard-sales-filters">
+                        <div class="form-group mb-0">
+                            <label for="dashboard-sales-pharmacy">Pharmacy</label>
+                            <select id="dashboard-sales-pharmacy" class="form-control">
+                                <option value="">All pharmacies</option>
+                                @foreach ($salesPharmacies as $pharmacy)
+                                    <option value="{{ $pharmacy->id }}">{{ $pharmacy->business_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="dashboard-sales-branch">Branch</label>
+                            <select id="dashboard-sales-branch" class="form-control">
+                                <option value="">All branches</option>
+                                @foreach ($salesBranches as $branch)
+                                    <option value="{{ $branch->id }}" data-pharmacy-id="{{ $branch->pharmacy_id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div id="dashboard-sales-export-actions" class="dashboard-sales-export-actions"></div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-hover table-center mb-0">
+                        <table data-export-type="dashboard-sales" data-export-target="#dashboard-sales-export-actions" data-export-filter-selects="#dashboard-sales-pharmacy,#dashboard-sales-branch" class="js-exportable-table table table-hover table-center mb-0" id="dashboard-sales-table">
                             <thead>
                                 <tr>
                                     <th>Medicine</th>
+                                    <th>Pharmacy</th>
+                                    <th>Branch</th>
                                     <th>Quantity</th>
                                     <th>Total Price</th>
                                     <th>Date</th>
@@ -246,8 +269,15 @@
                             <tbody>
                                 @foreach ($latest_sales as $sale)
                                     @if(!empty($sale->product->purchase))
-                                        <tr>
+                                        @php
+                                            $saleUser = optional($sale->transaction)->user;
+                                            $saleBranch = optional($saleUser)->branch;
+                                            $salePharmacy = $sale->pharmacy ?: optional($saleUser)->pharmacy;
+                                        @endphp
+                                        <tr data-pharmacy-id="{{ $sale->pharmacy_id ?: optional($salePharmacy)->id }}" data-branch-id="{{ optional($saleBranch)->id ?: '' }}">
                                             <td>{{$sale->product->purchase->name}}</td>
+                                            <td>{{ optional($salePharmacy)->business_name ?: '—' }}</td>
+                                            <td>{{ optional($saleBranch)->name ?: '—' }}</td>
                                             <td>{{$sale->quantity}}</td>
                                             <td>
                                                 {{AppSettings::get('app_currency', '$')}} {{($sale->total_price)}}
@@ -288,4 +318,93 @@
 {{-- </div> --}}
 
 
+    @push('page-css')
+        <style>
+            .dashboard-sales-filters {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+                align-items: end;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+
+            .dashboard-sales-filters label {
+                margin-bottom: 4px;
+                font-size: 10px;
+            }
+
+            .dashboard-sales-filters .form-control {
+                height: 34px;
+                min-height: 34px;
+                padding: 5px 9px;
+                font-size: 13px;
+            }
+
+            .dashboard-sales-export-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding-bottom: 1px;
+            }
+
+            @media (max-width: 575px) {
+                .dashboard-sales-filters {
+                    grid-template-columns: 1fr;
+                }
+
+                .dashboard-sales-export-actions {
+                    justify-content: flex-end;
+                }
+            }
+        </style>
+    @endpush
+
+    @push('page-js')
+        <script>
+            $(function() {
+                var $pharmacy = $('#dashboard-sales-pharmacy');
+                var $branch = $('#dashboard-sales-branch');
+
+                function updateSalesView() {
+                    var pharmacyId = $pharmacy.val();
+                    var branchId = $branch.val();
+
+                    $('#dashboard-sales-table tbody tr').each(function() {
+                        var rowPharmacy = String($(this).attr('data-pharmacy-id') || '');
+                        var rowBranch = String($(this).attr('data-branch-id') || '');
+                        var matchesPharmacy = !pharmacyId || rowPharmacy === pharmacyId;
+                        var matchesBranch = !branchId || rowBranch === branchId;
+                        $(this).toggle(matchesPharmacy && matchesBranch);
+                    });
+
+                    $('.dashboard-sales-export-actions .table-export-buttons a').each(function() {
+                        var url = this.href.split('?')[0];
+                        var filters = [];
+                        if (pharmacyId) filters.push('pharmacy_id=' + encodeURIComponent(pharmacyId));
+                        if (branchId) filters.push('branch_id=' + encodeURIComponent(branchId));
+                        this.href = url + (filters.length ? '?' + filters.join('&') : '');
+                    });
+                }
+
+                $pharmacy.on('change', function() {
+                    var pharmacyId = this.value;
+                    var selectedBranch = $branch.find(':selected');
+
+                    $branch.find('option').each(function() {
+                        if (!this.value) return;
+                        var belongsToPharmacy = !pharmacyId || this.getAttribute('data-pharmacy-id') === pharmacyId;
+                        this.hidden = !belongsToPharmacy;
+                        this.disabled = !belongsToPharmacy;
+                    });
+
+                    if (selectedBranch.val() && selectedBranch.prop('disabled')) {
+                        $branch.val('');
+                    }
+                    updateSalesView();
+                });
+
+                $branch.on('change', updateSalesView);
+            });
+        </script>
+    @endpush
 @endsection

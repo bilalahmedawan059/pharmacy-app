@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Models\Pharmacy;
 use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToPharmacy

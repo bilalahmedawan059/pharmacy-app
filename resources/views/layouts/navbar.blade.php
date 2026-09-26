@@ -122,6 +122,9 @@
 
 <style>
     .pharmapos-sidebar {
+        position: sticky;
+        top: 0;
+        align-self: flex-start;
         width: 240px;
         background: linear-gradient(180deg, #072d2d 0%, #062b2a 100%);
         border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -129,7 +132,10 @@
         display: flex;
         flex-direction: column;
         padding: 16px 14px 18px;
-        min-height: calc(100vh - 72px);
+        height: 100vh;
+        min-height: 100vh;
+        box-sizing: border-box;
+        overflow-y: auto;
         transition: width 0.22s ease, padding 0.22s ease;
     }
 
@@ -338,16 +344,33 @@
         font-size: 20px;
     }
 
+    .pharmapos-sidebar.collapsed .pharmapos-item-wrap {
+        width: 100%;
+    }
+
+    .pharmapos-sidebar.collapsed .pharmapos-item-wrap > a {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .pharmapos-sidebar.collapsed .submenu-toggle {
+        display: none;
+    }
+
     @media (max-width: 991px) {
         .pharmapos-layout {
             display: block;
         }
 
         .pharmapos-sidebar {
+            position: relative;
             width: 100%;
-            min-height: auto;
+            height: auto;
+            min-height: 100vh;
+            overflow-y: visible;
             border-right: 0;
             border-bottom: 1px solid rgba(255,255,255,0.08);
         }
+
     }
 </style>

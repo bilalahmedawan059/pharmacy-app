@@ -57,7 +57,7 @@
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="roles-table"
-                            class="datatable table table-striped table-bordered table-hover table-center mb-0">
+                            data-export-type="roles" class="datatable js-searchable-table js-exportable-table table table-striped table-bordered table-hover table-center mb-0">
                             <thead>
                                 <tr style="boder:1px solid black;">
                                     <th>Name</th>

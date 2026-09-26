@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use App\Models\Branch;
+use App\Models\Pharmacy;
 use App\Models\Sales;
 use App\Models\Setting;
 use App\Models\Category;
@@ -56,11 +58,29 @@ class DashboardController extends Controller
             // dd($pieChart );
 
         $total_expired_products = Purchase::whereDate('expiry_date', '=', Carbon::now())->count();
-        $latest_sales = Sales::whereDate('created_at','=',Carbon::now())->get();
+        $latest_sales = Sales::with([
+            'product.purchase',
+            'pharmacy',
+            'transaction.user.pharmacy',
+            'transaction.user.branch',
+        ])->latest()->get();
+        $isSuperAdmin = auth()->user()->hasRole('super-admin');
+        $salesPharmacies = Pharmacy::query()
+            ->when(!$isSuperAdmin, function ($query) {
+                $query->whereKey(auth()->user()->pharmacy_id);
+            })
+            ->orderBy('business_name')
+            ->get(['id', 'business_name']);
+        $salesBranches = Branch::query()
+            ->when(!$isSuperAdmin, function ($query) {
+                $query->where('pharmacy_id', auth()->user()->pharmacy_id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'pharmacy_id', 'name']);
         $today_sales = Sales::whereDate('created_at','=',Carbon::now())->sum('total_price');
         return view('home',compact(
             'title','pieChart','total_expired_products',
-            'latest_sales','today_sales','total_categories',
+            'latest_sales','today_sales','total_categories','salesPharmacies','salesBranches',
             'total_purchases','total_medicines','total_medicines_outStock',
             'total_medicines_runningOutStock','available_medicines',
             'total_suppliers', 'last_sevenDays','yesterday_sales'

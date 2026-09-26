@@ -18,10 +18,10 @@ class UserSeeder extends Seeder
     public function run()
     {
         $user = User::updateOrCreate(
-            ['email' => 'contact@cdlcell.com'],
+            ['email' => 'admin@gmail.com'],
             [
-                'name' => 'CDL',
-                'password' => Hash::make('cdlcell'),
+                'name' => 'Admin',
+                'password' => Hash::make('admin1234'),
             ]
         );
         $user->syncRoles(['super-admin']);

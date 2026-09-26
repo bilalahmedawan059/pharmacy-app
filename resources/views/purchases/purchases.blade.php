@@ -54,7 +54,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="datatable-export" class="table table-hover table-center mb-0">
+                        <table id="datatable-export" data-export-type="purchases" class="js-searchable-table js-exportable-table table table-hover table-center mb-0">
                             <thead>
                                 <tr>
                                     <th>Medicine Name</th>

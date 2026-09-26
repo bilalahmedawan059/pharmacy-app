@@ -2,7 +2,7 @@
 
 @push('page-css')
 	<!-- Select2 CSS -->
-    <link rel="stylesheet" href="{{asset('jambasangsang/assets/select2/css/select2.min.css')}}">
+    <link rel="stylesheet" href="{{ asset('assets/backend/select2/css/select2.min.css') }}">
 @endpush
 
 
@@ -58,7 +58,7 @@
                     <form method="GET" action="{{ route('sales') }}" class="mb-3">
                         <div class="form-group">
                             <label for="return-invoice">Invoice</label>
-                            <select id="return-invoice" name="return_transaction_id" class="form-control" required>
+                            <select id="return-invoice" name="return_transaction_id" class="select2 form-control" required>
                                 <option value="">Select invoice</option>
                                 @foreach ($transactions as $transaction)
                                     <option value="{{ $transaction->id }}" {{ optional($returnTransaction)->id === $transaction->id ? 'selected' : '' }}>{{ $transaction->invoice_number }} ({{ $transaction->created_at->format('d M Y') }})</option>
@@ -104,10 +104,14 @@
         <div class="pos-sidebar-card">
             <div class="pos-sidebar-card__header">
                 <h5>Invoices</h5>
+                <div id="invoice-export-actions" class="pos-invoice-export-actions"></div>
             </div>
-            <div class="pos-invoice-list">
+            <div class="p-3 pb-0">
+                <input type="search" id="invoice-search" class="form-control" placeholder="Search invoices..." aria-label="Search invoices">
+            </div>
+            <div class="pos-invoice-list js-exportable-list" data-export-type="transactions" data-export-target="#invoice-export-actions">
                 @foreach ($transactions as $transaction)
-                    <div class="pos-invoice-item">
+                    <div class="pos-invoice-item" data-invoice-search="{{ $transaction->invoice_number }} {{ optional($transaction->user)->name }} {{ $transaction->created_at->format('d M Y') }}">
                         <div class="pos-invoice-item__meta">
                             <span class="pos-invoice-number">{{ $transaction->invoice_number }}</span>
                             <span class="pos-invoice-date">{{ $transaction->created_at->format('d M, Y') }}</span>
@@ -125,35 +129,6 @@
             </div>
         </div>
 
-        <div class="pos-quick-card">
-            <div class="pos-quick-card__header">
-                <h6>Quick Alerts</h6>
-                <a href="#!">View Inventory</a>
-            </div>
-            <div class="pos-quick-list">
-                <div class="pos-quick-item low">
-                    <div>
-                        <strong>Panadol Syrup 60ml</strong>
-                        <small>Low stock</small>
-                    </div>
-                    <span>5</span>
-                </div>
-                <div class="pos-quick-item low">
-                    <div>
-                        <strong>Augmentin 625mg</strong>
-                        <small>Low stock</small>
-                    </div>
-                    <span>4</span>
-                </div>
-                <div class="pos-quick-item low">
-                    <div>
-                        <strong>Insulin Glargine</strong>
-                        <small>Low stock</small>
-                    </div>
-                    <span>2</span>
-                </div>
-            </div>
-        </div>
     </aside>
 </div>
 
@@ -202,8 +177,7 @@
         }
 
         .pos-sale-card,
-        .pos-sidebar-card,
-        .pos-quick-card {
+        .pos-sidebar-card {
             background: #f9fbfc;
             border: 1px solid #dfe9f2;
             border-radius: 18px;
@@ -382,14 +356,12 @@
             gap: 18px;
         }
 
-        .pos-sidebar-card,
-        .pos-quick-card {
+        .pos-sidebar-card {
             padding: 0;
             overflow: hidden;
         }
 
-        .pos-sidebar-card__header,
-        .pos-quick-card__header {
+        .pos-sidebar-card__header {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -398,11 +370,25 @@
             background: #f3f7f9;
         }
 
-        .pos-sidebar-card__header h5,
-        .pos-quick-card__header h6 {
+        .pos-sidebar-card__header h5 {
             margin: 0;
             color: #21313e;
             font-weight: 700;
+        }
+
+        .pos-invoice-export-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 6px;
+        }
+
+        .pos-invoice-export-actions .btn {
+            min-height: 30px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         .pos-invoice-list {
@@ -453,61 +439,6 @@
             font-weight: 700;
         }
 
-        .pos-quick-card__header a {
-            color: #3a8d8e;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .pos-quick-list {
-            background: #fff;
-            padding: 12px;
-        }
-
-        .pos-quick-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border: 1px solid #ebf1f5;
-            border-radius: 12px;
-            background: #f7fafb;
-            margin-bottom: 10px;
-        }
-
-        .pos-quick-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .pos-quick-item div {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .pos-quick-item strong {
-            font-size: 13px;
-            color: #1d2b36;
-        }
-
-        .pos-quick-item small {
-            font-size: 11px;
-            color: #7f8f9e;
-        }
-
-        .pos-quick-item span {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: #ffe7e5;
-            color: #d85248;
-            font-weight: 800;
-            font-size: 12px;
-        }
-
         @media (max-width: 1110px) {
             .pos-sales-shell {
                 grid-template-columns: 1fr;
@@ -535,7 +466,7 @@
 @endpush
 
 @push('page-js')
-    <script src="{{asset('jambasangsang/assets/select2/js/select2.min.js')}}"></script>
+    <script src="{{ asset('assets/backend/select2/js/select2.min.js') }}"></script>
     <script>
          $(document).ready(function() {
             $('.select2').select2({ width: '100%' });
@@ -547,6 +478,13 @@
                 $(this).addClass('active');
                 $('#new-sale-panel, #return-sale-panel').hide();
                 $('#' + panel).show();
+            });
+
+            $('#invoice-search').on('input', function() {
+                var query = this.value.trim().toLocaleLowerCase();
+                $('.pos-invoice-item').each(function() {
+                    $(this).toggle($(this).attr('data-invoice-search').toLocaleLowerCase().includes(query));
+                });
             });
 
             $('#datatable-export').on('click', '.editbtn', function() {

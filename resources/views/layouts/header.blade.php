@@ -1,19 +1,8 @@
 <header class="navbar pcoded-header navbar-expand-lg navbar-light header-dark">
     <div class="container">
-        <div class="m-header">
-            <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-                <i class="feather icon-menu"></i>
-            </button>
-
-            <a href="{{route('dashboard')}}" class="b-brand">
-                <img class="logo" width="120" style="width: 45px" src="@if(!empty(AppSettings::get('logo'))) {{asset('storage/'.AppSettings::get('logo'))}} @else{{asset('img/logo1.png')}} @endif" alt="Logo">
-                <img src="{{ asset('assets/backend/images/logo-icon.png') }}" alt="" class="logo-thumb">
-            </a>
-            <a href="#!" class="mob-toggler">
-                <i class="feather icon-more-vertical"></i>
-            </a>
-
-        </div>
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar" title="Toggle sidebar">
+            <i class="feather icon-menu"></i>
+        </button>
         <div class="collapse navbar-collapse">
             {{-- <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
@@ -165,15 +154,43 @@
     }
 
     .pcoded-header .container {
+        display: flex;
+        align-items: center;
         max-width: 100%;
         padding-left: 18px;
         padding-right: 18px;
+    }
+
+    .pcoded-header .navbar-collapse {
+        display: flex !important;
+        flex-basis: auto;
+        justify-content: flex-end;
     }
 
     .pcoded-header .m-header {
         display: flex;
         align-items: center;
         min-height: 72px;
+    }
+
+    .pcoded-header .sidebar-toggle {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 9px;
+        margin-right: 14px;
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .pcoded-header .sidebar-toggle:hover {
+        background: rgba(255,255,255,0.16);
     }
 
     .pcoded-header .b-brand {
@@ -232,22 +249,6 @@
         box-shadow: none;
     }
 
-    .sidebar-toggle {
-        width: 36px;
-        height: 36px;
-        border: 0;
-        border-radius: 10px;
-        background: transparent;
-        color: #fff;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px;
-        cursor: pointer;
-        opacity: 0.95;
-    }
-
-    .sidebar-toggle:hover,
     .pcoded-header .dropdown-toggle:hover {
         background: rgba(255,255,255,0.04);
     }
