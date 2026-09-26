@@ -96,11 +96,11 @@
         </form>
     @elseif ($step === 3)
         <form class="panel" method="POST" action="{{ route('register.step', 3) }}">
-            @csrf <h2>Staff Account Creation</h2><p>Each branch needs one Admin. Add optional staff accounts with database-backed roles.</p>
+            @csrf <h2>Staff Account Creation</h2><p>The pharmacy owner is the Admin. Each branch needs one Branch Manager; add other optional staff accounts as needed.</p>
             <div id="staff-list">
                 @foreach(data_get($data,'branches',[]) as $branchIndex => $branch)
-                    <div class="staff"><h3>{{ $branch['name'] }} Admin</h3><div class="grid">
-                        <input type="hidden" name="staff[{{ $branchIndex }}][branch_index]" value="{{ $branchIndex }}"><input type="hidden" name="staff[{{ $branchIndex }}][role]" value="admin">
+                    <div class="staff"><h3>{{ $branch['name'] }} Branch Manager</h3><div class="grid">
+                        <input type="hidden" name="staff[{{ $branchIndex }}][branch_index]" value="{{ $branchIndex }}"><input type="hidden" name="staff[{{ $branchIndex }}][role]" value="branch-manager">
                         <div><label>Name</label><input name="staff[{{ $branchIndex }}][name]" required></div><div><label>Email</label><input type="email" name="staff[{{ $branchIndex }}][email]" required></div>
                         <div><label>CNIC</label><input name="staff[{{ $branchIndex }}][cnic]" placeholder="XXXXX-XXXXXXX-X" required></div><div><label>Phone</label><input name="staff[{{ $branchIndex }}][phone]" required></div>
                     </div></div>

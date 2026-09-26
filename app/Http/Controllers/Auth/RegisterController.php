@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
 
 class RegisterController extends Controller
@@ -28,7 +29,11 @@ class RegisterController extends Controller
         $data = $request->session()->get('onboarding', []);
         $step = (int) $request->query('step', $request->session()->get('onboarding_step', 1));
         $step = max(1, min($step, 4));
-        $roles = Role::query()->orderBy('name')->pluck('name');
+        $roles = Role::withoutGlobalScopes()
+            ->whereNull('pharmacy_id')
+            ->whereNotIn('name', ['admin', 'super-admin', 'branch-manager'])
+            ->orderBy('name')
+            ->pluck('name');
 
         return view('auth.onboarding', compact('data', 'roles', 'step'));
     }
@@ -176,22 +181,29 @@ class RegisterController extends Controller
 
     private function validateStaff(Request $request)
     {
+        $staffRoles = Role::withoutGlobalScopes()
+            ->whereNull('pharmacy_id')
+            ->whereNotIn('name', ['admin', 'super-admin', 'branch-manager'])
+            ->pluck('name')
+            ->all();
+
         $validated = $request->validate([
             'staff' => ['required', 'array'],
             'staff.*.name' => ['required', 'string', 'max:100'],
             'staff.*.email' => ['required', 'email', 'max:255', 'distinct', 'unique:users,email'],
             'staff.*.cnic' => ['required', 'string', 'max:25'],
             'staff.*.phone' => ['required', 'string', 'max:30'],
-            'staff.*.role' => ['required', 'string', 'max:100'],
+            'staff.*.role' => ['required', 'string', Rule::in(array_merge($staffRoles, ['branch-manager']))],
             'staff.*.branch_index' => ['required', 'integer', 'min:0'],
         ])['staff'];
 
         $branchCount = count($request->session()->get('onboarding.branches', []));
         foreach (range(0, max(0, $branchCount - 1)) as $branchIndex) {
-            if (!collect($validated)->contains(function ($staff) use ($branchIndex) {
-                return (int) $staff['branch_index'] === $branchIndex && strtolower($staff['role']) === 'admin';
-            })) {
-                abort(422, 'Each branch requires an Admin account.');
+            $branchManagers = collect($validated)->filter(function ($staff) use ($branchIndex) {
+                return (int) $staff['branch_index'] === $branchIndex && strtolower($staff['role']) === 'branch-manager';
+            })->count();
+            if ($branchManagers !== 1) {
+                abort(422, 'Each branch requires exactly one Branch Manager account.');
             }
         }
 
