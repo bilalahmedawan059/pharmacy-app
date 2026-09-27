@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             // DeleteStorageDataSeeder::class,
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
-            // DemoDataSeeder::class,
+            DemoDataSeeder::class,
         ]);
     }
 }
