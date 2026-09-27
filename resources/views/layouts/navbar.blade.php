@@ -100,6 +100,15 @@
                 </li>
             @endcan
 
+            @if (auth()->check() && auth()->user()->hasRole('super-admin'))
+                <li class="{{ route_is('roles') ? 'active' : '' }}">
+                    <a href="{{ route('roles') }}"><span class="nav-icon">🛡️</span> <span class="nav-label">Role Management</span></a>
+                </li>
+                <li class="{{ route_is('permissions') ? 'active' : '' }}">
+                    <a href="{{ route('permissions') }}"><span class="nav-icon">🔐</span> <span class="nav-label">Permissions</span></a>
+                </li>
+            @endif
+
             @auth
                 @can('view-settings')
                     <li class="pharmapos-has-submenu {{ route_is(('settings')) || route_is(('backup.index')) ? 'active open' : '' }}">

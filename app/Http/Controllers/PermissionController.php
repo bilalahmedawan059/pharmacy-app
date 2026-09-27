@@ -12,7 +12,7 @@ class PermissionController extends Controller
     {
         abort_unless(auth()->user()->hasRole('super-admin'), 403);
         $title = "Permissions";
-        $permissions =Permission::get();
+        $permissions = Permission::orderBy('name')->paginate(10)->withQueryString();
         return view('permissions.permissions',compact(
             'title','permissions'
         ));

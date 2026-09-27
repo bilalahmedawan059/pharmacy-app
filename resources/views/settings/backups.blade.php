@@ -92,7 +92,7 @@
 						<tbody>
                             @foreach ($backups as $k => $b)
                             <tr>
-                                <td>{{ $k+1 }}</td>
+                                <td>{{ $backups->firstItem() + $loop->index }}</td>
                                 <td>{{ $b['disk'] }}</td>
                                 <td>{{ \Carbon\Carbon::createFromTimeStamp($b['last_modified'])->formatLocalized('%d %B %Y, %H:%M') }}</td>
                                 <td>{{ round((int)$b['file_size']/1048576, 2).' KB' }}</td>
@@ -119,6 +119,7 @@
 						</tbody>
 					</table>
 				</div>
+                <div class="mt-3"><x-pagination :paginator="$backups" /></div>
 			</div>
 		</div>
 	</div>

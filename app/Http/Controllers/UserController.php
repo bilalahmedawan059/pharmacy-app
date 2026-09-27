@@ -22,7 +22,7 @@ class UserController extends Controller
         if (!auth()->user()->hasRole('super-admin')) {
             $usersQuery->where('pharmacy_id', auth()->user()->pharmacy_id);
         }
-        $users = $usersQuery->get();
+        $users = $usersQuery->orderBy('name')->paginate(10)->withQueryString();
         $roles = Role::query()->where('name', '!=', 'super-admin')->orderBy('name')->get();
         $pharmacies = auth()->user()->hasRole('super-admin')
             ? Pharmacy::with('branches')->orderBy('business_name')->get()

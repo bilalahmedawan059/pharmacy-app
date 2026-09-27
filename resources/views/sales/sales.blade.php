@@ -36,7 +36,7 @@
                             <i class="feather icon-more-horizontal"></i>
                         </button>
                         <ul class="list-unstyled card-option dropdown-menu dropdown-menu-right">
-                            <li class="dropdown-item full-card"><a href="#!"><span><i class="feather icon-maximize"></i>
+                            <li class="dropdown-item sales-maximize-card"><a href="#!"><span><i class="feather icon-maximize"></i>
                                         maximize</span><span style="display:none"><i class="feather icon-minimize"></i>
                                         Restore</span></a>
                             </li>
@@ -65,11 +65,13 @@
                                 @endforeach
                             </select>
                         </div>
+                            @if ($branchId)<input type="hidden" name="branch_id" value="{{ $branchId }}">@endif
                         <button type="submit" class="btn btn-secondary btn-block">Load invoice items</button>
                     </form>
                     @if ($returnTransaction)
                         <form method="POST" action="{{ route('sales.transaction.return', $returnTransaction) }}" id="return-sale-form">
                             @csrf
+                            @if ($branchId)<input type="hidden" name="branch_id" value="{{ $branchId }}">@endif
                             <div class="table-responsive">
                                 <table class="table">
                                     <thead><tr><th>Medicine</th><th>Available</th><th>Return quantity</th></tr></thead>
@@ -122,10 +124,13 @@
                         </div>
                         <div class="pos-invoice-item__row muted">
                             <span>{{ optional($transaction->user)->name ?: 'Staff' }}</span>
-                            <a href="{{ route('sales.transaction.print', $transaction) }}" class="pos-print-link">Print</a>
+                            <a href="{{ route('sales.transaction.print', array_merge(['transaction' => $transaction], $branchId ? ['branch_id' => $branchId] : [])) }}" class="pos-print-link">Print</a>
                         </div>
                     </div>
                 @endforeach
+            </div>
+            <div class="px-3 pb-3">
+                <x-pagination :paginator="$transactions" />
             </div>
         </div>
 
@@ -144,6 +149,10 @@
             gap: 22px;
             align-items: start;
             margin-top: 14px;
+        }
+
+        .pos-sales-sidebar.sales-sidebar-hidden {
+            display: none;
         }
 
         .sale-topbar {
@@ -188,16 +197,24 @@
             overflow: hidden;
         }
 
-        .pos-sale-card.full-card {
+        .pos-sale-card.sales-card-maximized {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            margin: 0 !important;
+            border-radius: 0;
             display: flex;
             flex-direction: column;
         }
 
-        .pos-sale-card.full-card .pos-sale-card__header {
+        .pos-sale-card.sales-card-maximized .pos-sale-card__header {
             flex: 0 0 auto;
         }
 
-        .pos-sale-card.full-card .pos-sale-card__body {
+        .pos-sale-card.sales-card-maximized .pos-sale-card__body {
             min-height: 0;
             overflow-y: auto;
         }
@@ -498,11 +515,15 @@
                 $('.btn-block').text("Update Changes");
             });
 
-            $('.pos-sale-card .full-card').on('click', function() {
-                var isMaximized = $('.pos-sale-card').hasClass('full-card');
+            $('.pos-sale-card .sales-maximize-card').on('click', function(event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                var isMaximized = $('.pos-sale-card').toggleClass('sales-card-maximized').hasClass('sales-card-maximized');
+                $('.pos-sales-sidebar').toggleClass('sales-sidebar-hidden', isMaximized);
                 $('html, body').toggleClass('sales-fullscreen-lock', isMaximized);
                 $('main, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content, .main-body, .page-wrapper')
                     .toggleClass('sales-fullscreen-lock', isMaximized);
+                $(this).find('span').toggle();
             });
         });
     </script>

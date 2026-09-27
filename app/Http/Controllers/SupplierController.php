@@ -13,7 +13,7 @@ class SupplierController extends Controller
     {
         $this->authorize('view-supplier');
         $title = "Suppliers";
-        $suppliers = Supplier::get();
+        $suppliers = Supplier::orderBy('name')->paginate(10)->withQueryString();
         return view('suppliers.suppliers', compact('title', 'suppliers'));
     }
 

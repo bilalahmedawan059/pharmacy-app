@@ -74,6 +74,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-3"><x-pagination :paginator="$products" /></div>
                 </div>
             </div>
             <!-- /Recent Orders -->

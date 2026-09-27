@@ -19,14 +19,21 @@ class BranchController extends Controller
         $pharmacyId = auth()->user()->pharmacy_id;
 
         $pharmacies = Pharmacy::query()
-            ->with(['branches' => function ($query) {
-                $query->withCount('users')->orderBy('name');
-            }])
+            ->withCount('branches')
             ->when(!$isSuperAdmin, function ($query) use ($pharmacyId) {
                 $query->whereKey($pharmacyId);
             })
             ->orderBy('business_name')
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
+
+        $pharmacies->getCollection()->each(function ($pharmacy) {
+            $pharmacy->setRelation('branches', Branch::where('pharmacy_id', $pharmacy->id)
+                ->withCount('users')
+                ->orderBy('name')
+                ->paginate(10, ['*'], 'branch_page_' . $pharmacy->id)
+                ->withQueryString());
+        });
 
         $salesByPharmacy = SaleTransaction::withoutGlobalScopes()
             ->join('users', 'users.id', '=', 'sale_transactions.user_id')

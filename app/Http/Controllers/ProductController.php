@@ -21,7 +21,7 @@ class ProductController extends Controller
     {
         $this->authorize('view-products');
         $title = "products";
-        $products = Product::with('purchase')->get();
+        $products = Product::with('purchase')->paginate(10)->withQueryString();
 
         return view('products.products',compact(
             'title','products',
@@ -41,7 +41,7 @@ class ProductController extends Controller
     public function expired(){
         $this->authorize('view-expired-products');
         $title = "expired Products";
-        $products = Purchase::whereDate('expiry_date', '<', Carbon::now())->get();
+        $products = Purchase::whereDate('expiry_date', '<', Carbon::now())->paginate(10)->withQueryString();
 
         return view('products.expired',compact(
             'title','products'
@@ -52,7 +52,7 @@ class ProductController extends Controller
     public function outstock(){
         $this->authorize('view-outstock-products');
         $title = "outstocked Products";
-        $products = Purchase::where('quantity', '<=', 0)->get();
+        $products = Purchase::where('quantity', '<=', 0)->paginate(10)->withQueryString();
         $product = Purchase::where('quantity', '<=', 0)->first();
 
         return view('products.outstock',compact(

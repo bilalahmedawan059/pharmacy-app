@@ -110,6 +110,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-3"><x-pagination :paginator="$users" /></div>
                 </div>
             </div>
         </div>

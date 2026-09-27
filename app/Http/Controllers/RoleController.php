@@ -14,8 +14,8 @@ class RoleController extends Controller
         abort_unless(auth()->user()->hasRole('super-admin') || auth()->user()->can('view-role'), 403);
         $title = "user Roles";
         $roles = auth()->user()->hasRole('super-admin')
-            ? Role::with('permissions')->get()
-            : Role::with('permissions')->where('pharmacy_id', auth()->user()->pharmacy_id)->get();
+            ? Role::with('permissions')->paginate(10)->withQueryString()
+            : Role::with('permissions')->where('pharmacy_id', auth()->user()->pharmacy_id)->paginate(10)->withQueryString();
         $permissions = Permission::get();
         return view('roles.roles',compact(
             'title','roles','permissions'

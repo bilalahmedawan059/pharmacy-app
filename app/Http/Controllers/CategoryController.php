@@ -12,7 +12,7 @@ class CategoryController extends Controller
     {
         $this->authorize('view-category');
         $title = "categories";
-        $categories = Category::get();
+        $categories = Category::orderBy('name')->paginate(10)->withQueryString();
         return view('categories.categories',compact(
             'title','categories',
         ));

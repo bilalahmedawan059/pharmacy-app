@@ -14,6 +14,7 @@ class SaleTransaction extends Model
     protected $fillable = [
         'invoice_number',
         'user_id',
+        'branch_id',
         'customer_name',
         'subtotal',
         'discount',
@@ -41,5 +42,10 @@ class SaleTransaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

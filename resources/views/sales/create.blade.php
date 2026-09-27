@@ -1,26 +1,26 @@
 <form method="POST" action="{{ route('sales') }}" id="checkout-form">
     @csrf
+    @if ($canSelectBranch && $branches->isNotEmpty())
+    <div class="form-group">
+        <label for="sales-branch">Branch</label>
+        <select id="sales-branch" name="branch_id" class="select2 form-control" onchange="window.location.href='{{ route('sales') }}?branch_id=' + encodeURIComponent(this.value)">
+            @foreach ($branches as $branch)
+                <option value="{{ $branch->id }}" {{ (int) $branchId === (int) $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+            @endforeach
+        </select>
+    </div>
+    @elseif ($branchId)
+    <input type="hidden" name="branch_id" value="{{ $branchId }}">
+    @endif
     <div class="form-group">
         <label for="product_code">Scan barcode</label>
         <input type="text" class="form-control" id="product_code" autocomplete="off" autofocus>
-    </div>
-    <div class="form-group">
-        <label for="product-dropdown">Medicine</label>
-        <select class="select2 form-control" id="product-dropdown">
-            <option value="">Select Product</option>
-            @foreach ($products as $product)
-                @if ($product->purchase && $product->purchase->quantity > 0)
-                    <option value="{{ $product->id }}" data-name="{{ $product->purchase->name }}" data-price="{{ $product->price }}" data-stock="{{ $product->purchase->quantity }}">{{ $product->purchase->name }}</option>
-                @endif
-            @endforeach
-        </select>
     </div>
     <div class="form-group position-relative">
         <label for="medicine-search">Search and add medicine</label>
         <input type="search" class="form-control" id="medicine-search" placeholder="Type a medicine name" autocomplete="off">
         <div id="medicine-results" class="list-group position-absolute w-100" style="z-index: 10;"></div>
     </div>
-    <button type="button" class="btn btn-secondary btn-block" id="add-product">Add medicine</button>
     <div class="table-responsive mt-3">
         <table class="table table-sm" id="cart-table">
             <thead><tr><th>Medicine</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
@@ -153,14 +153,7 @@
 $(function () {
     const cart = {}, currency = @json(AppSettings::get('app_currency', '$'));
     const money = value => currency + ' ' + Number(value).toFixed(2);
-    const medicines = $('#product-dropdown option').filter(function () { return $(this).val(); }).map(function () {
-        return {
-            id: $(this).val(),
-            name: $(this).attr('data-name'),
-            price: Number($(this).attr('data-price')),
-            stock: Number($(this).attr('data-stock'))
-        };
-    }).get();
+    const medicines = @json($medicineOptions);
 
     function calculateTotals() {
         let subtotal = 0;
@@ -241,7 +234,6 @@ $(function () {
             if (match) addSearchedMedicine(match);
         }
     });
-    $('#add-product').on('click', function () { const option = $('#product-dropdown option:selected'); if (option.val()) addProduct({ id: option.val(), name: option.data('name'), price: option.data('price'), stock: option.data('stock') }); });
     $('#product_code').on('change', function () { const input = $(this); if (!input.val()) return; $.post('{{ route('getProductByBarcode') }}', { _token: '{{ csrf_token() }}', barcode: input.val() }).done(function (response) { addProduct(response.product); input.val('').focus(); }).fail(function (xhr) { alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Medicine could not be found.'); input.select(); }); });
     $('#cart-table').on('click', '.remove-item', function () { delete cart[$(this).data('id')]; renderCart(); });
     $('#cart-table').on('change', '.cart-quantity', function () { const id = $(this).data('id'); cart[id].quantity = Math.max(1, Math.min(Number($(this).val()), cart[id].stock)); renderCart(); });
@@ -260,7 +252,6 @@ $(function () {
         Object.keys(cart).forEach(function (id) { delete cart[id]; });
         $('#product_code, #medicine-search, #amount_received').val('');
         $('#medicine-results').empty();
-        $('#product-dropdown').val('').trigger('change');
         $('#discount_percent').val(0);
         $('input[name="payment_method"][value="cash"]').prop('checked', true).trigger('change');
         renderCart();

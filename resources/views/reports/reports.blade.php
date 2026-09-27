@@ -136,6 +136,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="mt-3"><x-pagination :paginator="$sales" /></div>
                         <!-- / sales -->
                     @endisset
 
@@ -184,6 +185,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="mt-3"><x-pagination :paginator="$products" /></div>
 
                         <!-- /Products -->
                     @endisset
@@ -230,6 +232,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="mt-3"><x-pagination :paginator="$purchases" /></div>
 
                         <!-- /Purchases -->
                     @endisset

@@ -109,6 +109,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mt-3"><x-pagination :paginator="$roles" /></div>
                 </div>
             </div>
         </div>

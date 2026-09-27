@@ -14,7 +14,7 @@ class PurchaseController extends Controller
     {
         $this->authorize('view-purchase');
         $title = "purchases";
-        $purchases = Purchase::with('category')->get();
+        $purchases = Purchase::with('category')->paginate(10)->withQueryString();
         return view('purchases.purchases', compact(
             'title',
             'purchases'

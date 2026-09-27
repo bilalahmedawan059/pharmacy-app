@@ -12,6 +12,9 @@ class ReportController extends Controller
 {
     public function index(){
         $this->authorize('view-reports');
+        if (request()->filled('resource')) {
+            return $this->getData(request());
+        }
         $title = "generate Reports";
         return view('reports.reports',compact(
             'title',
@@ -27,21 +30,23 @@ class ReportController extends Controller
         ]);
         $from_date = $request->from_date;
         $to_date = $request->to_date;
+        $filters = $request->only(['from_date', 'to_date', 'resource']);
         if ($request->resource == 'sales'){
-            $sales = Sales::whereBetween(DB::raw('DATE(created_at)'), array($from_date, $to_date))->get();
-            $total_sales = $sales->count();
-            $total_cash =$sales->sum('total_price');
+            $salesQuery = Sales::with('product.purchase')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date]);
+            $total_sales = (clone $salesQuery)->count();
+            $total_cash = (clone $salesQuery)->sum('total_price');
+            $sales = $salesQuery->paginate(10)->appends($filters);
             $title = "Sales Reports";
             return view('reports.reports',compact('sales','title','total_sales','total_cash'));
         }
         if($request->resource == "products"){
             $title = "Products Reports";
-            $products = Product::whereBetween(DB::raw('DATE(created_at)'), array($from_date, $to_date))->get();
+            $products = Product::with('purchase.category')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
             return view('reports.reports',compact('title','products'));
         }
         if($request->resource == 'purchases'){
             $title = "Purchases Reports";
-            $purchases = Purchase::whereBetween(DB::raw('DATE(created_at)'), array($from_date, $to_date))->get();
+            $purchases = Purchase::with(['supplier', 'category'])->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
             return view('reports.reports',compact('title','purchases'));
         }
     }

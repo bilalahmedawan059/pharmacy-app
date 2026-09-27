@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 // use Log;
 // use Artisan;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 // use Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
@@ -53,6 +54,16 @@ class BackupController extends Controller
                 }
             }
         }
+        $backups = collect($this->data['backups']);
+        $perPage = 10;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $this->data['backups'] = new LengthAwarePaginator(
+            $backups->forPage($currentPage, $perPage)->values(),
+            $backups->count(),
+            $perPage,
+            $currentPage,
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
         return view('settings.backups',$this->data,compact(
             'title',
         ));
