@@ -18,7 +18,7 @@
             @endauth
 
             @can('view-products')
-                <li class="pharmapos-has-submenu {{ route_is(('products')) || route_is(('add-product')) || route_is(('outstock')) || route_is(('expired')) || route_is(('edit-product')) ? 'active open' : '' }}">
+                <li class="pharmapos-has-submenu {{ route_is(('products')) || route_is(('add-product')) || route_is(('outstock')) || route_is(('expired')) || route_is(('near-expiry')) || route_is(('edit-product')) ? 'active open' : '' }}">
                     <div class="pharmapos-item-wrap">
                         <a href="{{ route('products') }}"><span class="nav-icon">📦</span> <span class="nav-label">Product Catalog</span></a>
                         <button type="button" class="submenu-toggle" aria-label="Toggle Product Catalog submenu">▾</button>
@@ -35,6 +35,7 @@
                         @endcan
                         @can('view-expired-products')
                             <li class="{{ route_is('expired') ? 'active' : '' }}"><a href="{{ route('expired') }}">Expired</a></li>
+                            <li class="{{ route_is('near-expiry') ? 'active' : '' }}"><a href="{{ route('near-expiry') }}">Near Expiry</a></li>
                         @endcan
                     </ul>
                 </li>

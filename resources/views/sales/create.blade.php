@@ -181,8 +181,9 @@ $(function () {
         Object.keys(cart).forEach(function (id) {
             const item = cart[id], lineTotal = item.quantity * item.price;
             subtotal += lineTotal;
-            rows += '<tr><td>' + $('<div>').text(item.name).html() + '<input type="hidden" name="items[' + id + '][product_id]" value="' + id + '"></td>' +
-                '<td><div class="quantity-control"><button type="button" class="quantity-minus" data-id="' + id + '" aria-label="Decrease quantity">-</button><input class="cart-quantity text-center" data-id="' + id + '" type="number" min="1" max="' + item.stock + '" name="items[' + id + '][quantity]" value="' + item.quantity + '"><button type="button" class="quantity-plus" data-id="' + id + '" aria-label="Increase quantity">+</button></div></td>' +
+            const allocationPreview = previewAllocations(item, item.quantity);
+            rows += '<tr><td>' + $('<div>').text(item.name).html() + '<div class="small text-muted batch-preview">' + allocationPreview + '</div><input type="hidden" name="items[' + id + '][product_id]" value="' + id + '"></td>' +
+                '<td><div class="quantity-control"><button type="button" class="quantity-minus" data-id="' + id + '" aria-label="Decrease quantity">-</button><input class="cart-quantity text-center" data-id="' + id + '" type="number" min="1" max="' + item.stock + '" name="items[' + id + '][quantity]" value="' + item.quantity + '"><button type="button" class="quantity-plus" data-id="' + id + '" aria-label="Increase quantity"' + (item.quantity >= item.stock ? ' disabled' : '') + '>+</button></div></td>' +
                 '<td>' + money(item.price) + '</td><td>' + money(lineTotal) + '</td><td><button type="button" class="btn btn-sm btn-danger remove-item" data-id="' + id + '">&times;</button></td></tr>';
         });
         $('#cart-table tbody').html(rows || '<tr><td colspan="5" class="text-muted">No medicines added.</td></tr>');
@@ -199,9 +200,23 @@ $(function () {
         $('#change-amount').text(money(Math.max(received - Math.max(subtotal - discountAmount, 0), 0)));
     }
 
+    function previewAllocations(item, quantity) {
+        let remaining = quantity;
+        const parts = [];
+        (item.batches || []).forEach(function (batch) {
+            if (remaining <= 0) return;
+            const take = Math.min(remaining, Number(batch.quantity));
+            if (take > 0) {
+                parts.push(take + ' from ' + $('<div>').text(batch.batch_number).html() + ' (exp ' + batch.expiry_date + ')');
+                remaining -= take;
+            }
+        });
+        return parts.length ? parts.join(' + ') : 'No sellable stock';
+    }
+
     function addProduct(product) {
         if (!product || Number(product.stock) < 1) { alert('This medicine is out of stock.'); return; }
-        if (!cart[product.id]) cart[product.id] = { name: product.name, price: Number(product.price), stock: Number(product.stock), quantity: 0 };
+        if (!cart[product.id]) cart[product.id] = { name: product.name, price: Number(product.price), stock: Number(product.stock), batches: product.batches || [], quantity: 0 };
         if (cart[product.id].quantity >= cart[product.id].stock) { alert('The requested quantity is not available.'); return; }
         cart[product.id].quantity++; renderCart();
     }
@@ -234,7 +249,7 @@ $(function () {
             if (match) addSearchedMedicine(match);
         }
     });
-    $('#product_code').on('change', function () { const input = $(this); if (!input.val()) return; $.post('{{ route('getProductByBarcode') }}', { _token: '{{ csrf_token() }}', barcode: input.val() }).done(function (response) { addProduct(response.product); input.val('').focus(); }).fail(function (xhr) { alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Medicine could not be found.'); input.select(); }); });
+    $('#product_code').on('change', function () { const input = $(this); if (!input.val()) return; $.post('{{ route('getProductByBarcode') }}', { _token: '{{ csrf_token() }}', barcode: input.val(), branch_id: $('#sales-branch').val() || $('input[name="branch_id"]').val() }).done(function (response) { addProduct(response.product); input.val('').focus(); }).fail(function (xhr) { alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Medicine could not be found.'); input.select(); }); });
     $('#cart-table').on('click', '.remove-item', function () { delete cart[$(this).data('id')]; renderCart(); });
     $('#cart-table').on('change', '.cart-quantity', function () { const id = $(this).data('id'); cart[id].quantity = Math.max(1, Math.min(Number($(this).val()), cart[id].stock)); renderCart(); });
     $('#cart-table').on('click', '.quantity-minus, .quantity-plus', function () {

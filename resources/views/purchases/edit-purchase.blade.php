@@ -58,6 +58,7 @@
 				<form method="post" enctype="multipart/form-data" autocomplete="off" action="{{route('edit-purchase',$purchase)}}">
 					@csrf
 					@method("PUT")
+					@if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 					<div class="service-fields mb-3">
 						<div class="row">
 							<div class="col-lg-4">
@@ -97,25 +98,13 @@
 									<input class="form-control" value="{{$purchase->price}}" type="text" name="price">
 								</div>
 							</div>
-							<div class="col-lg-6">
-								<div class="form-group">
-									<label>Quantity<span class="text-danger">*</span></label>
-									<input class="form-control" value="{{$purchase->quantity}}" type="text" name="quantity">
-								</div>
-							</div>
 						</div>
 					</div>
 
 					<div class="service-fields mb-3">
 						<div class="row">
-							<div class="col-lg-6">
-								<div class="form-group">
-									<label>Expire Date<span class="text-danger">*</span></label>
-									<input class="form-control" value="{{$purchase->expiry_date}}" type="date" name="expiry_date">
-								</div>
-							</div>
                             @if (!empty($purchase->image))
-							<div class="col-lg-4">
+							<div class="col-lg-6">
 								<div class="form-group">
 									<label>Medicine Image</label>
 									<input type="file" name="image" value="{{$purchase->image}}" class="form-control">
@@ -144,6 +133,51 @@
 						</div>
 					</div>
 
+					<h5 class="mt-4">Batches</h5>
+					<p class="text-muted">Batches with sale allocations are read-only.</p>
+					<div class="table-responsive">
+						<table class="table table-bordered">
+							<thead><tr><th>Batch</th><th>Expiry</th><th>Received</th><th>Left</th><th>Status</th></tr></thead>
+							<tbody>
+							@forelse ($purchase->batches as $batch)
+								@php($editable = $batch->quantity_available === $batch->quantity_received && $batch->sale_allocations_count === 0)
+								<tr>
+									<td>
+										@if ($editable)
+											<input class="form-control" name="batches[{{ $batch->id }}][batch_number]" value="{{ $batch->batch_number }}" required>
+										@else
+											{{ $batch->batch_number }}
+										@endif
+									</td>
+									<td>
+										@if ($editable)
+											<input class="form-control" type="date" name="batches[{{ $batch->id }}][expiry_date]" value="{{ $batch->expiry_date->format('Y-m-d') }}" required>
+										@else
+											{{ $batch->expiry_date->format('m/Y') }}
+										@endif
+									</td>
+									<td>
+										@if ($editable)
+											<input class="form-control" type="number" min="0" name="batches[{{ $batch->id }}][quantity_received]" value="{{ $batch->quantity_received }}" required>
+										@else
+											{{ $batch->quantity_received }}
+										@endif
+									</td>
+									<td>{{ $batch->quantity_available }}</td>
+									<td>
+										@if ($editable)
+											<span class="text-success">Editable</span>
+										@else
+											<span class="text-muted">Read-only: batch has sale allocations</span>
+										@endif
+									</td>
+								</tr>
+							@empty
+								<tr><td colspan="5" class="text-muted">No batches recorded.</td></tr>
+							@endforelse
+							</tbody>
+						</table>
+					</div>
 
 					<div class="submit-section">
 						<button class="btn btn-primary submit-btn" type="submit" >Submit</button>
@@ -164,4 +198,3 @@
 	<!-- Select2 JS -->
 	<script src="{{asset('assets/plugins/select2/js/select2.min.js')}}"></script>
 @endpush
-

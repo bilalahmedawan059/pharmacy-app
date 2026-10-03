@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\RecordsExport;
 use App\Models\Branch;
+use App\Models\Batch;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -32,29 +33,41 @@ class ExportController extends Controller
         switch ($dataset) {
             case 'products':
                 $this->authorize('view-products');
-                $products = Product::with('purchase.category')->get();
-                $headings = ['Medicine', 'Product Code', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date'];
+                $products = Product::with('purchase.category', 'purchase.batches')->get();
+                $headings = ['Medicine', 'Product Code', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date', 'Batch Number', 'Batch Expiry'];
                 $rows = $this->productRows($products);
                 $title = 'Products';
                 break;
             case 'expired':
                 $this->authorize('view-expired-products');
-                $purchases = Purchase::with('category')->whereDate('expiry_date', '<', Carbon::today())->get();
-                $headings = ['Medicine', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date'];
-                $rows = $this->purchaseRows($purchases, false);
-                $title = 'Expired Products';
+                $batches = Batch::with('purchase')->whereDate('expiry_date', '<', Carbon::today())
+                    ->where('quantity_available', '>', 0)->orderBy('expiry_date')->get();
+                $headings = ['Medicine', 'Batch Number', 'Expiry', 'Quantity Left'];
+                $rows = $this->expiryBatchRows($batches);
+                $title = 'Expired Batches';
+                break;
+            case 'near-expiry':
+                $this->authorize('view-expired-products');
+                $days = (int) $request->validate(['days' => 'required|in:30,60,90'])['days'];
+                $batches = Batch::with('purchase')->where('quantity_available', '>', 0)
+                    ->whereDate('expiry_date', '>=', Carbon::today())
+                    ->whereDate('expiry_date', '<=', Carbon::today()->addDays($days))
+                    ->orderBy('expiry_date')->get();
+                $headings = ['Medicine', 'Batch Number', 'Expiry', 'Quantity Left'];
+                $rows = $this->expiryBatchRows($batches);
+                $title = 'Near Expiry Batches';
                 break;
             case 'outstock':
                 $this->authorize('view-outstock-products');
-                $purchases = Purchase::with('category')->where('quantity', '<=', 0)->get();
-                $headings = ['Medicine', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date'];
+                $purchases = Purchase::with(['category', 'batches'])->where('quantity', '<=', 0)->get();
+                $headings = ['Medicine', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date', 'Batch Number', 'Batch Expiry'];
                 $rows = $this->purchaseRows($purchases, false);
                 $title = 'Out of Stock';
                 break;
             case 'purchases':
                 $this->authorize('view-purchase');
-                $purchases = Purchase::with(['category', 'supplier'])->get();
-                $headings = ['Medicine', 'Category', 'Purchase Price', 'Quantity', 'Supplier', 'Expiry Date'];
+                $purchases = Purchase::with(['category', 'supplier', 'batches'])->get();
+                $headings = ['Medicine', 'Category', 'Purchase Price', 'Quantity', 'Supplier', 'Expiry Date', 'Batch Number', 'Batch Expiry'];
                 $rows = $this->purchaseRows($purchases, true);
                 $title = 'Purchases';
                 break;
@@ -143,8 +156,8 @@ class ExportController extends Controller
                 break;
             case 'sales':
                 $this->authorize('view-sales');
-                $sales = Sales::with('product.purchase')->latest()->get();
-                $headings = ['Medicine', 'Quantity', 'Total Price', 'Date'];
+                $sales = Sales::with('product.purchase', 'allocations.batch')->latest()->get();
+                $headings = ['Medicine', 'Quantity', 'Total Price', 'Date', 'Batch Number', 'Batch Expiry'];
                 $rows = $this->salesRows($sales);
                 $title = 'Sales';
                 break;
@@ -156,6 +169,7 @@ class ExportController extends Controller
                 ]);
                 $salesQuery = Sales::with([
                     'product.purchase',
+                    'allocations.batch',
                     'pharmacy',
                     'transaction.user.pharmacy',
                     'transaction.user.branch',
@@ -169,7 +183,7 @@ class ExportController extends Controller
                     });
                 }
                 $sales = $salesQuery->get();
-                $headings = ['Medicine', 'Pharmacy', 'Branch', 'Quantity', 'Total Price', 'Date'];
+                $headings = ['Medicine', 'Pharmacy', 'Branch', 'Quantity', 'Total Price', 'Date', 'Batch Number', 'Batch Expiry'];
                 $rows = $this->dashboardSalesRows($sales);
                 $title = 'Sales';
                 break;
@@ -203,22 +217,22 @@ class ExportController extends Controller
                     'to_date' => ['required', 'date', 'after_or_equal:from_date'],
                 ]);
                 if ($dataset === 'report-sales') {
-                    $sales = Sales::with('product.purchase')
+                    $sales = Sales::with('product.purchase', 'allocations.batch')
                         ->whereBetween(DB::raw('DATE(created_at)'), [$dates['from_date'], $dates['to_date']])
                         ->latest()->get();
-                    $headings = ['Medicine', 'Quantity', 'Total Price', 'Date'];
+                    $headings = ['Medicine', 'Quantity', 'Total Price', 'Date', 'Batch Number', 'Batch Expiry'];
                     $rows = $this->salesRows($sales);
                     $title = 'Sales Report';
                 } elseif ($dataset === 'report-products') {
-                    $products = Product::with('purchase.category')
+                    $products = Product::with('purchase.category', 'purchase.batches')
                         ->whereBetween(DB::raw('DATE(created_at)'), [$dates['from_date'], $dates['to_date']])->get();
-                    $headings = ['Medicine', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date'];
+                    $headings = ['Medicine', 'Category', 'Price', 'Quantity', 'Discount', 'Expiry Date', 'Batch Number', 'Batch Expiry'];
                     $rows = $this->reportProductRows($products);
                     $title = 'Products Report';
                 } else {
-                    $purchases = Purchase::with(['category', 'supplier'])
+                    $purchases = Purchase::with(['category', 'supplier', 'batches'])
                         ->whereBetween(DB::raw('DATE(created_at)'), [$dates['from_date'], $dates['to_date']])->get();
-                    $headings = ['Medicine', 'Category', 'Purchase Price', 'Quantity', 'Supplier', 'Expiry Date'];
+                    $headings = ['Medicine', 'Category', 'Purchase Price', 'Quantity', 'Supplier', 'Expiry Date', 'Batch Number', 'Batch Expiry'];
                     $rows = $this->purchaseRows($purchases, true);
                     $title = 'Purchases Report';
                 }
@@ -245,6 +259,8 @@ class ExportController extends Controller
                 $product->purchase->quantity,
                 $product->discount,
                 $this->formatDate($product->purchase->expiry_date),
+                $product->purchase->batches->pluck('batch_number')->implode(', '),
+                $product->purchase->batches->map(function ($batch) { return $this->formatDate($batch->expiry_date); })->implode(', '),
             ];
         })->values()->all();
     }
@@ -261,6 +277,8 @@ class ExportController extends Controller
                 $product->purchase->quantity,
                 $product->discount,
                 $this->formatDate($product->purchase->expiry_date),
+                $product->purchase->batches->pluck('batch_number')->implode(', '),
+                $product->purchase->batches->map(function ($batch) { return $this->formatDate($batch->expiry_date); })->implode(', '),
             ];
         })->values()->all();
     }
@@ -282,6 +300,8 @@ class ExportController extends Controller
             }
 
             $row[] = $this->formatDate($purchase->expiry_date);
+            $row[] = $purchase->batches->pluck('batch_number')->implode(', ');
+            $row[] = $purchase->batches->map(function ($batch) { return $this->formatDate($batch->expiry_date); })->implode(', ');
 
             return $row;
         })->all();
@@ -297,6 +317,8 @@ class ExportController extends Controller
                 $sale->quantity,
                 $sale->total_price,
                 optional($sale->created_at)->format('Y-m-d H:i:s'),
+                $sale->allocations->map(function ($allocation) { return optional($allocation->batch)->batch_number; })->filter()->implode(', '),
+                $sale->allocations->map(function ($allocation) { return $this->formatDate(optional($allocation->batch)->expiry_date); })->filter()->implode(', '),
             ];
         })->values()->all();
     }
@@ -317,8 +339,22 @@ class ExportController extends Controller
                 $sale->quantity,
                 $sale->total_price,
                 optional($sale->created_at)->format('Y-m-d H:i:s'),
+                $sale->allocations->map(function ($allocation) { return optional($allocation->batch)->batch_number; })->filter()->implode(', '),
+                $sale->allocations->map(function ($allocation) { return $this->formatDate(optional($allocation->batch)->expiry_date); })->filter()->implode(', '),
             ];
         })->values()->all();
+    }
+
+    private function expiryBatchRows($batches)
+    {
+        return $batches->map(function (Batch $batch) {
+            return [
+                optional($batch->purchase)->name,
+                $batch->batch_number,
+                $this->formatDate($batch->expiry_date),
+                $batch->quantity_available,
+            ];
+        })->all();
     }
 
     private function formatDate($value)

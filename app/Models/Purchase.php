@@ -7,12 +7,13 @@ use App\Models\Supplier;
 use App\Models\Concerns\BelongsToPharmacy;
 use App\Events\ProductReachedLowStock;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Purchase extends Model
 {
-    use HasFactory, Notifiable, BelongsToPharmacy;
+    use HasFactory, Notifiable, SoftDeletes, BelongsToPharmacy;
 
     protected $fillable = [
         'name', 'category_id', 'price', 'quantity',

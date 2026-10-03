@@ -9,6 +9,7 @@ use App\Models\Sales;
 use App\Models\Setting;
 use App\Models\Category;
 use App\Models\Purchase;
+use App\Models\Batch;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Notifications\StockAlert;
@@ -26,10 +27,16 @@ class DashboardController extends Controller
             403
         );
         $total_suppliers = Supplier::count();
-        $total_medicines = Purchase::count();
-        $available_medicines = Purchase::where('quantity', '>' , 5)->count();
-        $total_medicines_outStock = Purchase::where('quantity', 0)->count();
-        $total_medicines_runningOutStock = Purchase::where('quantity', '<=', 5)->count();
+        $stockPurchases = Purchase::with('batches')->get();
+        $total_medicines = $stockPurchases->count();
+        $sellableStockByMedicine = $stockPurchases->map(function (Purchase $purchase) {
+            return $purchase->batches->filter(function (Batch $batch) {
+                return $batch->quantity_available > 0 && $batch->expiry_date->gte(Carbon::today());
+            })->sum('quantity_available');
+        });
+        $available_medicines = $sellableStockByMedicine->filter(function ($quantity) { return $quantity > 5; })->count();
+        $total_medicines_outStock = $sellableStockByMedicine->filter(function ($quantity) { return $quantity <= 0; })->count();
+        $total_medicines_runningOutStock = $sellableStockByMedicine->filter(function ($quantity) { return $quantity > 0 && $quantity <= 5; })->count();
         $total_purchases = Purchase::count();
 
         $total_categories = Category::count();
@@ -57,7 +64,7 @@ class DashboardController extends Controller
 
             // dd($pieChart );
 
-        $total_expired_products = \App\Models\Batch::whereDate('expiry_date', '<', Carbon::today())->where('quantity_available', '>', 0)->count();
+        $total_expired_products = Batch::whereDate('expiry_date', '<', Carbon::today())->where('quantity_available', '>', 0)->count();
         $latest_sales = Sales::with([
             'product.purchase',
             'pharmacy',

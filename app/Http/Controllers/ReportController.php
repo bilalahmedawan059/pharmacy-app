@@ -32,7 +32,7 @@ class ReportController extends Controller
         $to_date = $request->to_date;
         $filters = $request->only(['from_date', 'to_date', 'resource']);
         if ($request->resource == 'sales'){
-            $salesQuery = Sales::with('product.purchase')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date]);
+            $salesQuery = Sales::with('product.purchase', 'allocations.batch')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date]);
             $total_sales = (clone $salesQuery)->count();
             $total_cash = (clone $salesQuery)->sum('total_price');
             $sales = $salesQuery->paginate(10)->appends($filters);
@@ -41,12 +41,12 @@ class ReportController extends Controller
         }
         if($request->resource == "products"){
             $title = "Products Reports";
-            $products = Product::with('purchase.category')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
+            $products = Product::with('purchase.category', 'purchase.batches')->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
             return view('reports.reports',compact('title','products'));
         }
         if($request->resource == 'purchases'){
             $title = "Purchases Reports";
-            $purchases = Purchase::with(['supplier', 'category'])->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
+            $purchases = Purchase::with(['supplier', 'category', 'batches'])->whereBetween(DB::raw('DATE(created_at)'), [$from_date, $to_date])->paginate(10)->appends($filters);
             return view('reports.reports',compact('title','purchases'));
         }
     }

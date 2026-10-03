@@ -63,7 +63,7 @@
 								<th>Product Code</th>
 								<th>Category</th>
 								<th>Price</th>
-								<th>Quantity</th>
+								<th>Available Stock / Batches</th>
 								<th>Discount</th>
 								<th>Expiry Date</th>
 								<th class="action-btn">Action</th>
@@ -89,7 +89,28 @@
 									<td>{{$product->purchase->category->name}}</td>
 									<td>{{AppSettings::get('app_currency', '$')}} {{$product->price}}
 									</td>
-									<td>{{$product->purchase->quantity}}</td>
+									<td>
+										{{ $product->purchase->batches->filter(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); })->sum('quantity_available') }}
+										<details class="mt-2">
+											<summary>View batches</summary>
+											<table class="table table-sm mt-2 mb-0">
+												<thead><tr><th>Batch</th><th>Expiry</th><th>Received</th><th>Left</th><th></th></tr></thead>
+												<tbody>
+												@php($sellFirstBatch = $product->purchase->batches->first(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); }))
+												@foreach ($product->purchase->batches as $batch)
+													@php($batchClass = $batch->expiry_date->lt(today()) ? 'text-danger' : ($batch->expiry_date->lte(today()->addDays(30)) ? 'text-warning' : ''))
+													<tr class="{{ $batchClass }}">
+														<td>{{ $batch->batch_number }}</td>
+														<td>{{ $batch->expiry_date->format('m/Y') }}</td>
+														<td>{{ $batch->quantity_received }}</td>
+														<td>{{ $batch->quantity_available }}</td>
+														<td>@if ($sellFirstBatch && $sellFirstBatch->id === $batch->id)<strong>Sells first</strong>@endif</td>
+													</tr>
+												@endforeach
+												</tbody>
+											</table>
+										</details>
+									</td>
 									<td>{{$product->discount ?? 0}}%</td>
 									<td>
 									{{date_format(date_create($product->purchase->expiry_date),"d M, Y")}}</span>

@@ -449,8 +449,10 @@
                             var query = [];
                             var fromDate = $element.attr('data-from-date');
                             var toDate = $element.attr('data-to-date');
+                            var exportDays = $element.attr('data-export-days');
                             if (fromDate) query.push('from_date=' + encodeURIComponent(fromDate));
                             if (toDate) query.push('to_date=' + encodeURIComponent(toDate));
+                            if (exportDays) query.push('days=' + encodeURIComponent(exportDays));
                             if (query.length) url += '?' + query.join('&');
 
                             $('<a>', {

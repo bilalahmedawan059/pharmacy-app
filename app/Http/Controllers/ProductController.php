@@ -21,7 +21,9 @@ class ProductController extends Controller
     {
         $this->authorize('view-products');
         $title = "products";
-        $products = Product::with('purchase')->paginate(10)->withQueryString();
+        $products = Product::with(['purchase.batches' => function ($query) {
+            $query->orderBy('expiry_date')->orderBy('id');
+        }])->paginate(10)->withQueryString();
 
         return view('products.products',compact(
             'title','products',
@@ -40,14 +42,32 @@ class ProductController extends Controller
 
     public function expired(){
         $this->authorize('view-expired-products');
-        $title = "expired Products";
-        $products = Purchase::whereHas('batches', function ($query) {
-            $query->whereDate('expiry_date', '<', Carbon::today());
-        })->paginate(10)->withQueryString();
+        $title = 'Expired Batches';
+        $batches = \App\Models\Batch::with('purchase')
+            ->whereDate('expiry_date', '<', Carbon::today())
+            ->where('quantity_available', '>', 0)
+            ->orderBy('expiry_date')
+            ->paginate(10)->withQueryString();
 
-        return view('products.expired',compact(
-            'title','products'
+        return view('products.expiry-batches',compact(
+            'title','batches'
         ));
+    }
+
+    public function nearExpiry(Request $request)
+    {
+        $this->authorize('view-expired-products');
+        $filters = $request->validate(['days' => 'nullable|in:30,60,90']);
+        $days = (int) ($filters['days'] ?? 30);
+        $title = 'Near-expiry Batches';
+        $batches = \App\Models\Batch::with('purchase')
+            ->where('quantity_available', '>', 0)
+            ->whereDate('expiry_date', '>=', Carbon::today())
+            ->whereDate('expiry_date', '<=', Carbon::today()->addDays($days))
+            ->orderBy('expiry_date')
+            ->paginate(10)->withQueryString();
+
+        return view('products.expiry-batches', compact('title', 'batches', 'days'));
     }
 
 

@@ -15,13 +15,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->call(function () {
-            \App\Models\Batch::where('quantity_available', '>', 0)
-                ->whereDate('expiry_date', '<', now()->toDateString())
-                ->update([
-                    'quantity_available' => \DB::raw('quantity_available'),
-                ]);
-        })->daily();
+        $schedule->command('batches:notify-expiry')->daily();
     }
 
     /**

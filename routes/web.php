@@ -96,6 +96,7 @@ Route::group(['middleware'=>['auth']],function (){
     Route::get('medicines',[ProductController::class,'index'])->name('products');
     Route::get('medicines/create',[ProductController::class,'create'])->name('add-product');
     Route::get('expired-medicines',[ProductController::class,'expired'])->name('expired');
+    Route::get('near-expiry-medicines',[ProductController::class,'nearExpiry'])->name('near-expiry');
     Route::get('medicines/{product}',[ProductController::class,'show'])->name('edit-product');
     Route::get('outstock-medicines',[ProductController::class,'outstock'])->name('outstock');
     Route::post('medicines/create',[ProductController::class,'store']);
@@ -113,6 +114,7 @@ Route::group(['middleware'=>['auth']],function (){
     Route::get('add-stock',[PurchaseController::class,'create'])->name('add-purchase');
     Route::post('add-stock',[PurchaseController::class,'store'])->name('store-stock');
     Route::get('stocks/{purchase}',[PurchaseController::class,'show'])->name('edit-purchase');
+    Route::get('stocks/{purchase}/batches/{batch}',[PurchaseController::class,'batchShow'])->name('purchases.batch');
     Route::put('stocks/{purchase}',[PurchaseController::class,'update']);
     Route::delete('stocks',[PurchaseController::class,'destroy'])->name('delete-stock');
 

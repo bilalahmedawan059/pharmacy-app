@@ -117,6 +117,8 @@
                                                 <th>Quantity</th>
                                                 <th>Total Price</th>
                                                 <th>Date</th>
+                                                <th>Batch Number</th>
+                                                <th>Batch Expiry</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -129,6 +131,8 @@
                                                             {{ $sale->total_price }}
                                                         </td>
                                                         <td>{{ date_format(date_create($sale->created_at), 'd M, Y') }}</td>
+                                                        <td>{{ $sale->allocations->map(function ($allocation) { return optional($allocation->batch)->batch_number; })->filter()->implode(', ') }}</td>
+                                                        <td>{{ $sale->allocations->map(function ($allocation) { return optional(optional($allocation->batch)->expiry_date)->format('m/Y'); })->filter()->implode(', ') }}</td>
 
                                                     </tr>
                                                 @endif
@@ -152,6 +156,8 @@
                                                 <th>Quantity</th>
                                                 <th>Discount</th>
                                                 <th>Expiry Date</th>
+                                                <th>Batch Number</th>
+                                                <th>Batch Expiry</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -178,6 +184,8 @@
                                                         <td>
                                                             {{ date_format(date_create($product->purchase->expiry_date), 'd M, Y') }}</span>
                                                         </td>
+                                                        <td>{{ $product->purchase->batches->pluck('batch_number')->implode(', ') }}</td>
+                                                        <td>{{ $product->purchase->batches->map(function ($batch) { return $batch->expiry_date->format('m/Y'); })->implode(', ') }}</td>
                                                     </tr>
                                                 @endif
                                             @endforeach
@@ -202,6 +210,8 @@
                                                 <th>Quantity</th>
                                                 <th>Supplier</th>
                                                 <th>Expire Date</th>
+                                                <th>Batch Number</th>
+                                                <th>Batch Expiry</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -225,6 +235,8 @@
                                                         <td>{{ $purchase->supplier->name }}</td>
                                                         <td>{{ date_format(date_create($purchase->expiry_date), 'd M, Y') }}
                                                         </td>
+                                                        <td>{{ $purchase->batches->pluck('batch_number')->implode(', ') }}</td>
+                                                        <td>{{ $purchase->batches->map(function ($batch) { return $batch->expiry_date->format('m/Y'); })->implode(', ') }}</td>
                                                     </tr>
                                                 @endif
                                             @endforeach

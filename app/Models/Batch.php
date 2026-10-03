@@ -5,12 +5,13 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToPharmacy;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Batch extends Model
 {
-    use BelongsToPharmacy;
+    use BelongsToPharmacy, SoftDeletes;
 
     protected $fillable = [
         'purchase_id',
@@ -62,6 +63,17 @@ class Batch extends Model
     {
         return $query->where('quantity_available', '>', 0)
             ->whereDate('expiry_date', '>=', Carbon::today());
+    }
+
+    public function scopeForBranch($query, ?int $branchId)
+    {
+        return $query->where(function ($branchQuery) use ($branchId) {
+            if ($branchId) {
+                $branchQuery->where('branch_id', $branchId)->orWhereNull('branch_id');
+            } else {
+                $branchQuery->whereNull('branch_id');
+            }
+        });
     }
 
     public function scopeExpired($query)

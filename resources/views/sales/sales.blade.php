@@ -74,13 +74,20 @@
                             @if ($branchId)<input type="hidden" name="branch_id" value="{{ $branchId }}">@endif
                             <div class="table-responsive">
                                 <table class="table">
-                                    <thead><tr><th>Medicine</th><th>Available</th><th>Return quantity</th></tr></thead>
+                                    <thead><tr><th>Medicine / batches sold</th><th>Available</th><th>Return quantity</th></tr></thead>
                                     <tbody>
                                     @foreach ($returnTransaction->lines as $line)
                                         @php($availableQuantity = $line->quantity - $line->returned_quantity)
                                         @if ($availableQuantity > 0)
                                             <tr>
-                                                <td>{{ optional($line->product->purchase)->name ?: 'Medicine' }}</td>
+                                                <td>
+                                                    {{ optional($line->product->purchase)->name ?: 'Medicine' }}
+                                                    <div class="small text-muted">
+                                                        @foreach ($line->allocations as $allocation)
+                                                            {{ $allocation->quantity }} from {{ optional($allocation->batch)->batch_number ?: '-' }} (exp {{ optional(optional($allocation->batch)->expiry_date)->format('m/Y') ?: '-' }})@if (!$loop->last) + @endif
+                                                        @endforeach
+                                                    </div>
+                                                </td>
                                                 <td>{{ $availableQuantity }}</td>
                                                 <td><input type="number" class="form-control" name="returns[{{ $line->id }}]" min="0" max="{{ $availableQuantity }}" value="0"></td>
                                             </tr>
@@ -126,6 +133,17 @@
                             <span>{{ optional($transaction->user)->name ?: 'Staff' }}</span>
                             <a href="{{ route('sales.transaction.print', array_merge(['transaction' => $transaction], $branchId ? ['branch_id' => $branchId] : [])) }}" class="pos-print-link">Print</a>
                         </div>
+                        <details class="mt-2">
+                            <summary>Items and batches</summary>
+                            @foreach ($transaction->lines as $line)
+                                <div class="small mt-2">
+                                    <strong>{{ optional($line->product->purchase)->name ?: 'Medicine' }}</strong>:
+                                    @foreach ($line->allocations as $allocation)
+                                        {{ $allocation->quantity }} from {{ optional($allocation->batch)->batch_number ?: '-' }} ({{ optional(optional($allocation->batch)->expiry_date)->format('m/Y') ?: '-' }})@if (!$loop->last); @endif
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        </details>
                     </div>
                 @endforeach
             </div>

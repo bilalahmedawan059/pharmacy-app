@@ -60,7 +60,7 @@
                                     <th>Medicine Name</th>
                                     <th>Medicine Category</th>
                                     <th>Purchase Price</th>
-                                    <th>Quantity</th>
+                                    <th>Stock / Batches</th>
                                     <th>Supplier</th>
                                     <th>Expire Date</th>
                                     <th class="action-btn">Action</th>
@@ -81,7 +81,28 @@
                                         </td>
                                         <td>{{ $purchase->category->name }}</td>
                                         <td>{{ AppSettings::get('app_currency', '$') }}{{ $purchase->price }}</td>
-                                        <td>{{ $purchase->quantity }}</td>
+                                        <td>
+                                            {{ $purchase->batches->filter(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); })->sum('quantity_available') }}
+                                            <details class="mt-2">
+                                                <summary>View batches</summary>
+                                                <table class="table table-sm mt-2 mb-0">
+                                                    <thead><tr><th>Batch</th><th>Expiry</th><th>Received</th><th>Left</th><th></th></tr></thead>
+                                                    <tbody>
+                                                    @php($sellFirstBatch = $purchase->batches->first(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); }))
+                                                    @foreach ($purchase->batches as $batch)
+                                                        @php($batchClass = $batch->expiry_date->lt(today()) ? 'text-danger' : ($batch->expiry_date->lte(today()->addDays(30)) ? 'text-warning' : ''))
+                                                        <tr class="{{ $batchClass }}">
+                                                            <td><a href="{{ route('purchases.batch', [$purchase, $batch]) }}">{{ $batch->batch_number }}</a></td>
+                                                            <td>{{ $batch->expiry_date->format('m/Y') }}</td>
+                                                            <td>{{ $batch->quantity_received }}</td>
+                                                            <td>{{ $batch->quantity_available }}</td>
+                                                            <td>@if ($sellFirstBatch && $sellFirstBatch->id === $batch->id)<strong>Sells first</strong>@endif</td>
+                                                        </tr>
+                                                    @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </details>
+                                        </td>
                                         <td>{{ $purchase->supplier->name }}</td>
                                         <td>{{ date_format(date_create($purchase->expiry_date), 'd M, Y') }}</td>
                                         <td>
@@ -109,7 +130,7 @@
         </div>
     </div>
     <!-- Delete Modal -->
-    <x-modals.delete :route="'purchases'" :title="'Purchase'" />
+    <x-modals.delete :route="'delete-stock'" :title="'Purchase'" />
     <!-- /Delete Modal -->
 @endsection
 

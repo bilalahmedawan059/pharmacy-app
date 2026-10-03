@@ -10,7 +10,6 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\SaleBatchAllocation;
 use App\Models\SaleTransaction;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,10 +20,16 @@ class SalesController extends Controller
 
     public function getProductByBarcode(Request $request)
     {
+        $this->authorize('create-sales');
         $request->validate([
             'barcode' => 'required|string',
+            'branch_id' => 'nullable|integer',
         ]);
 
+        $user = $request->user();
+        $canSelectBranch = $user->hasAnyRole(['super-admin', 'admin', 'branch-manager']);
+        $branches = $this->availableBranches($user, $canSelectBranch);
+        $branch = $this->resolveBranch($request, $branches, $canSelectBranch);
         $product = Product::with('purchase')
             ->where('product_code', $request->barcode)
             ->first();
@@ -39,7 +44,8 @@ class SalesController extends Controller
                 'id' => $product->id,
                 'name' => $product->purchase->name,
                 'price' => (float) $product->price,
-                'stock' => (int) $product->purchase->quantity,
+                'stock' => $this->sellableBatches($product->purchase_id, optional($branch)->id)->sum('quantity_available'),
+                'batches' => $this->batchOptions($this->sellableBatches($product->purchase_id, optional($branch)->id)),
             ],
         ]);
     }
@@ -57,27 +63,29 @@ class SalesController extends Controller
         $branchScopeActive = $branches->isNotEmpty();
         $title = "sales";
         $products = Product::with('purchase')->get();
-        $medicineOptions = $products->filter(function ($product) {
-            return $product->purchase && $product->purchase->quantity > 0;
-        })->map(function ($product) {
+        $medicineOptions = $products->filter(function ($product) use ($branchId) {
+            return $product->purchase && $this->sellableBatches($product->purchase_id, $branchId)->isNotEmpty();
+        })->map(function ($product) use ($branchId) {
+            $batches = $this->sellableBatches($product->purchase_id, $branchId);
             return [
                 'id' => $product->id,
                 'name' => $product->purchase->name,
                 'price' => (float) $product->price,
-                'stock' => (int) $product->purchase->quantity,
+                'stock' => (int) $batches->sum('quantity_available'),
+                'batches' => $this->batchOptions($batches),
             ];
         })->values();
-        $sales = Sales::with('product.purchase')->whereHas('transaction', function ($query) use ($branchId, $branchScopeActive) {
+        $sales = Sales::with('product.purchase', 'allocations.batch')->whereHas('transaction', function ($query) use ($branchId, $branchScopeActive) {
             if ($branchScopeActive) {
                 $query->where('branch_id', $branchId);
             }
         })->latest()->get();
-        $transactions = SaleTransaction::with('lines.product.purchase', 'user')->when($branchScopeActive, function ($query) use ($branchId) {
+        $transactions = SaleTransaction::with('lines.product.purchase', 'lines.allocations.batch', 'user')->when($branchScopeActive, function ($query) use ($branchId) {
             $query->where('branch_id', $branchId);
-        })->latest()->paginate(10)->withQueryString();
+        })->latest()->orderBy('id', 'desc')->paginate(10)->withQueryString();
         $returnTransaction = null;
         if (request()->filled('return_transaction_id')) {
-            $returnTransaction = SaleTransaction::with('lines.product.purchase')->when($branchScopeActive, function ($query) use ($branchId) {
+            $returnTransaction = SaleTransaction::with('lines.product.purchase', 'lines.allocations.batch')->when($branchScopeActive, function ($query) use ($branchId) {
                     $query->where('branch_id', $branchId);
                 })
                 ->find(request('return_transaction_id'));
@@ -135,19 +143,43 @@ class SalesController extends Controller
             $transaction = DB::transaction(function () use ($items, $request, $branch) {
                 $subtotal = 0;
                 $prepared = [];
+                $products = Product::with('purchase')
+                    ->whereIn('id', $items->pluck('product_id'))
+                    ->get()
+                    ->keyBy('id');
+                $purchaseIds = $products->pluck('purchase_id')->unique()->sort()->values();
+                $lockedPurchases = Purchase::whereIn('id', $purchaseIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+                if ($lockedPurchases->count() !== $purchaseIds->count()) {
+                    throw new \DomainException('The selected medicine is no longer available.');
+                }
+                $lockedBatches = Batch::whereIn('purchase_id', $purchaseIds)
+                    ->forBranch(optional($branch)->id)
+                    ->availableForSale()
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+                $batchesByPurchase = $lockedBatches->groupBy('purchase_id')->map(function ($batches) use ($branch) {
+                    return $this->sortBatchesForSale($batches, optional($branch)->id);
+                });
+                $remainingByBatch = $lockedBatches->mapWithKeys(function (Batch $batch) {
+                    return [$batch->id => (int) $batch->quantity_available];
+                });
 
                 foreach ($items as $item) {
-                    $product = Product::with('purchase')->findOrFail($item['product_id']);
+                    $product = $products->get($item['product_id']);
+                    if (!$product || !$product->purchase) {
+                        throw new \DomainException('The selected medicine is no longer available.');
+                    }
                     $needed = (int) $item['quantity'];
-                    $availableBatches = Batch::where('purchase_id', $product->purchase_id)
-                        ->where('quantity_available', '>', 0)
-                        ->whereDate('expiry_date', '>=', Carbon::today())
-                        ->orderBy('expiry_date')
-                        ->orderBy('id')
-                        ->lockForUpdate()
-                        ->get();
+                    $availableBatches = $batchesByPurchase->get($product->purchase_id, collect());
 
-                    $availableStock = $availableBatches->sum('quantity_available');
+                    $availableStock = $availableBatches->sum(function (Batch $batch) use ($remainingByBatch) {
+                        return $remainingByBatch->get($batch->id, 0);
+                    });
                     if ($availableStock < $needed) {
                         throw new \DomainException($product->purchase->name . ' has only ' . $availableStock . ' left in stock.');
                     }
@@ -159,11 +191,15 @@ class SalesController extends Controller
                             break;
                         }
 
-                        $allocationQty = min($remaining, (int) $batch->quantity_available);
+                        $allocationQty = min($remaining, (int) $remainingByBatch->get($batch->id, 0));
+                        if ($allocationQty <= 0) {
+                            continue;
+                        }
                         $allocations[] = [
                             'batch_id' => $batch->id,
                             'quantity' => $allocationQty,
                         ];
+                        $remainingByBatch->put($batch->id, $remainingByBatch->get($batch->id) - $allocationQty);
                         $remaining -= $allocationQty;
                     }
 
@@ -195,6 +231,7 @@ class SalesController extends Controller
                     'payment_status' => 'paid',
                 ]);
 
+                $affectedPurchaseIds = [];
                 foreach ($prepared as $line) {
                     $saleLine = Sales::create([
                         'sale_transaction_id' => $invoice->id,
@@ -204,7 +241,10 @@ class SalesController extends Controller
                     ]);
 
                     foreach ($line['allocations'] as $allocation) {
-                        $batch = Batch::whereKey($allocation['batch_id'])->lockForUpdate()->firstOrFail();
+                        $batch = $lockedBatches->firstWhere('id', $allocation['batch_id']);
+                        if (!$batch) {
+                            throw new \DomainException('A stock batch could not be reserved.');
+                        }
                         $batch->decrement('quantity_available', $allocation['quantity']);
                         SaleBatchAllocation::create([
                             'sale_id' => $saleLine->id,
@@ -213,8 +253,17 @@ class SalesController extends Controller
                             'returned_quantity' => 0,
                         ]);
                     }
+                    $affectedPurchaseIds[] = $line['product']->purchase_id;
 
-                    $remainingPurchase = $line['product']->purchase->fresh();
+                }
+
+                sort($affectedPurchaseIds);
+                foreach (array_unique($affectedPurchaseIds) as $purchaseId) {
+                    $remainingPurchase = $lockedPurchases->get($purchaseId);
+                    if ($remainingPurchase) {
+                        $remainingPurchase->refreshTotals();
+                        $remainingPurchase->refresh();
+                    }
                     if ($remainingPurchase && $remainingPurchase->quantity <= 1) {
                         event(new MedicineOutStock($remainingPurchase));
                     }
@@ -245,7 +294,7 @@ class SalesController extends Controller
     {
         $this->authorize('view-sales');
         $this->assertTransactionBranch($transaction, request());
-        $transaction->load('lines.product.purchase', 'user');
+        $transaction->load('lines.product.purchase', 'lines.allocations.batch', 'user');
         return view('sales.receipt', compact('transaction'));
     }
 
@@ -261,11 +310,18 @@ class SalesController extends Controller
         try {
             DB::transaction(function () use ($request, $transaction) {
                 $transaction = SaleTransaction::whereKey($transaction->id)
-                    ->with('lines.allocations.batch')
                     ->lockForUpdate()
                     ->firstOrFail();
                 $lines = $transaction->lines()->lockForUpdate()->get()->keyBy('id');
+                $allocationsByLine = SaleBatchAllocation::whereIn('sale_id', $lines->keys())
+                    ->orderBy('batch_id')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->groupBy('sale_id');
                 $returnedSubtotal = 0;
+                $pendingReturns = [];
+                $batchIds = [];
 
                 foreach ($request->input('returns', []) as $lineId => $returnQuantity) {
                     $returnQuantity = (int) $returnQuantity;
@@ -283,8 +339,42 @@ class SalesController extends Controller
                         throw new \DomainException('Return quantity cannot exceed the quantity sold.');
                     }
 
+                    $allocations = $allocationsByLine->get($line->id, collect());
+                    $allocatedQuantity = $allocations->sum(function ($allocation) {
+                        return $allocation->quantity - $allocation->returned_quantity;
+                    });
+                    if ($returnQuantity > $allocatedQuantity) {
+                        throw new \DomainException('Return quantity exceeds the batch allocations for this item.');
+                    }
+                    $pendingReturns[$line->id] = $returnQuantity;
+                    $batchIds = array_merge($batchIds, $allocations->pluck('batch_id')->all());
+                }
+
+                $batchIds = array_values(array_unique($batchIds));
+                sort($batchIds);
+                $batchPurchaseIds = Batch::whereIn('id', $batchIds)
+                    ->orderBy('id')
+                    ->get(['id', 'purchase_id'])
+                    ->pluck('purchase_id')
+                    ->unique()
+                    ->sort()
+                    ->values();
+                $lockedPurchases = Purchase::whereIn('id', $batchPurchaseIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+                $batches = Batch::whereIn('id', $batchIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+                $affectedPurchaseIds = [];
+
+                foreach ($pendingReturns as $lineId => $returnQuantity) {
+                    $line = $lines->get((int) $lineId);
                     $remaining = $returnQuantity;
-                    foreach ($line->allocations()->with('batch')->orderBy('id')->get() as $allocation) {
+                    foreach ($allocationsByLine->get($line->id, collect())->sortBy('id') as $allocation) {
                         if ($remaining <= 0) {
                             break;
                         }
@@ -295,8 +385,13 @@ class SalesController extends Controller
                         }
 
                         $takeFromAllocation = min($remaining, $allocatable);
+                        $batch = $batches->get($allocation->batch_id);
+                        if (!$batch) {
+                            throw new \DomainException('The original sale batch could not be found.');
+                        }
                         $allocation->increment('returned_quantity', $takeFromAllocation);
-                        $allocation->batch()->first()->increment('quantity_available', $takeFromAllocation);
+                        $batch->increment('quantity_available', $takeFromAllocation);
+                        $affectedPurchaseIds[] = $batch->purchase_id;
                         $remaining -= $takeFromAllocation;
                     }
 
@@ -307,6 +402,14 @@ class SalesController extends Controller
                     $unitPrice = $line->quantity > 0 ? (float) $line->total_price / $line->quantity : 0;
                     $line->increment('returned_quantity', $returnQuantity);
                     $returnedSubtotal += $unitPrice * $returnQuantity;
+                }
+
+                sort($affectedPurchaseIds);
+                foreach (array_unique($affectedPurchaseIds) as $purchaseId) {
+                    $purchase = $lockedPurchases->get($purchaseId);
+                    if ($purchase) {
+                        $purchase->refreshTotals();
+                    }
                 }
 
                 if ($returnedSubtotal <= 0) {
@@ -383,5 +486,38 @@ class SalesController extends Controller
         if ($branches->isNotEmpty() && (int) $transaction->branch_id !== (int) optional($branch)->id) {
             abort(404);
         }
+    }
+
+    private function sellableBatches(int $purchaseId, ?int $branchId)
+    {
+        $batches = Batch::where('purchase_id', $purchaseId)
+            ->forBranch($branchId)
+            ->availableForSale()
+            ->orderBy('id')
+            ->get();
+
+        return $this->sortBatchesForSale($batches, $branchId);
+    }
+
+    private function sortBatchesForSale($batches, ?int $branchId)
+    {
+        return $batches->sort(function (Batch $first, Batch $second) use ($branchId) {
+            $firstLegacy = $branchId && $first->branch_id === null;
+            $secondLegacy = $branchId && $second->branch_id === null;
+            return [$firstLegacy, $first->expiry_date->timestamp, $first->id]
+                <=> [$secondLegacy, $second->expiry_date->timestamp, $second->id];
+        })->values();
+    }
+
+    private function batchOptions($batches): array
+    {
+        return $batches->map(function (Batch $batch) {
+            return [
+                'id' => $batch->id,
+                'batch_number' => $batch->batch_number,
+                'expiry_date' => $batch->expiry_date->format('m/Y'),
+                'quantity' => (int) $batch->quantity_available,
+            ];
+        })->all();
     }
 }

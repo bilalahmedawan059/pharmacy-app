@@ -60,6 +60,19 @@
 				<!-- Add Medicine -->
 				<form method="post" enctype="multipart/form-data" autocomplete="off" action="{{route('store-stock')}}">
 					@csrf
+					@if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+					@if ($canSelectBranch && $branches->isNotEmpty())
+					<div class="form-group">
+						<label for="purchase-branch">Branch<span class="text-danger">*</span></label>
+						<select class="select2 form-control" id="purchase-branch" name="branch_id" required>
+							@foreach ($branches as $availableBranch)
+								<option value="{{ $availableBranch->id }}" {{ optional($branch)->id === $availableBranch->id ? 'selected' : '' }}>{{ $availableBranch->name }}</option>
+							@endforeach
+						</select>
+					</div>
+					@elseif ($branch)
+						<input type="hidden" name="branch_id" value="{{ $branch->id }}">
+					@endif
 					<div class="service-fields mb-3">
 						<div class="row">
 							<div class="col-lg-4">
@@ -156,4 +169,3 @@
         });
     </script>
 @endpush
-

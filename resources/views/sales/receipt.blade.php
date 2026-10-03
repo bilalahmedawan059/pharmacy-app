@@ -110,9 +110,13 @@
         @foreach ($transaction->lines as $line)
             @php($remainingQuantity = $line->quantity - $line->returned_quantity)
             @if ($remainingQuantity > 0)
-            @php($batch = $line->allocations()->with('batch')->first()?->batch)
             <tr>
-                <td>{{ Str::limit(optional($line->product->purchase)->name ?: 'Medicine', 12) }}<br><span class="muted">{{ $batch ? $batch->batch_number : '-' }} / {{ $batch && $batch->expiry_date ? $batch->expiry_date->format('m/Y') : '-' }}</span></td>
+                <td>
+                    {{ Str::limit(optional($line->product->purchase)->name ?: 'Medicine', 12) }}<br>
+                    @foreach ($line->allocations as $allocation)
+                        <span class="muted">{{ $allocation->quantity }} × {{ optional($allocation->batch)->batch_number ?: '-' }} / {{ optional(optional($allocation->batch)->expiry_date)->format('m/Y') ?: '-' }}@if (!$loop->last)<br>@endif</span>
+                    @endforeach
+                </td>
                 <td>{{ $remainingQuantity }}</td>
                 <td>{{ number_format(($line->quantity > 0 ? $line->total_price / $line->quantity : 0) * $remainingQuantity, 2) }}</td>
             </tr>
