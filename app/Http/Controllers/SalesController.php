@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Events\MedicineOutStock;
+use App\Models\Batch;
 use App\Models\Sales;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\SaleBatchAllocation;
 use App\Models\SaleTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -130,58 +133,92 @@ class SalesController extends Controller
 
         try {
             $transaction = DB::transaction(function () use ($items, $request, $branch) {
-            $subtotal = 0;
-            $prepared = [];
+                $subtotal = 0;
+                $prepared = [];
 
-            foreach ($items as $item) {
-                $product = Product::with('purchase')->findOrFail($item['product_id']);
-                $purchase = Purchase::whereKey($product->purchase_id)->lockForUpdate()->firstOrFail();
+                foreach ($items as $item) {
+                    $product = Product::with('purchase')->findOrFail($item['product_id']);
+                    $needed = (int) $item['quantity'];
+                    $availableBatches = Batch::where('purchase_id', $product->purchase_id)
+                        ->where('quantity_available', '>', 0)
+                        ->whereDate('expiry_date', '>=', Carbon::today())
+                        ->orderBy('expiry_date')
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get();
 
-                if ($purchase->quantity < $item['quantity']) {
-                    throw new \DomainException($purchase->name . ' has only ' . $purchase->quantity . ' left in stock.');
+                    $availableStock = $availableBatches->sum('quantity_available');
+                    if ($availableStock < $needed) {
+                        throw new \DomainException($product->purchase->name . ' has only ' . $availableStock . ' left in stock.');
+                    }
+
+                    $remaining = $needed;
+                    $allocations = [];
+                    foreach ($availableBatches as $batch) {
+                        if ($remaining <= 0) {
+                            break;
+                        }
+
+                        $allocationQty = min($remaining, (int) $batch->quantity_available);
+                        $allocations[] = [
+                            'batch_id' => $batch->id,
+                            'quantity' => $allocationQty,
+                        ];
+                        $remaining -= $allocationQty;
+                    }
+
+                    $lineTotal = round($needed * (float) $product->price, 2);
+                    $subtotal += $lineTotal;
+                    $prepared[] = compact('product', 'item', 'lineTotal', 'allocations');
                 }
 
-                $lineTotal = round($item['quantity'] * (float) $product->price, 2);
-                $subtotal += $lineTotal;
-                $prepared[] = compact('product', 'purchase', 'item', 'lineTotal');
-            }
+                $discountPercent = (float) ($request->discount_percent ?? 0);
+                $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+                $total = round($subtotal - $discountAmount, 2);
+                $received = round((float) $request->amount_received, 2);
 
-            $discountPercent = (float) ($request->discount_percent ?? 0);
-            $discountAmount = round($subtotal * ($discountPercent / 100), 2);
-            $total = round($subtotal - $discountAmount, 2);
-            $received = round((float) $request->amount_received, 2);
+                if ($received < $total) {
+                    throw new \DomainException('Amount received cannot be less than the invoice total.');
+                }
 
-            if ($received < $total) {
-                throw new \DomainException('Amount received cannot be less than the invoice total.');
-            }
-
-            $invoice = SaleTransaction::create([
-                'invoice_number' => $this->invoiceNumber(),
-                'user_id' => optional($request->user())->id,
-                'branch_id' => optional($branch)->id,
-                'customer_name' => $request->customer_name,
-                'subtotal' => round($subtotal, 2),
-                'discount' => round($discountAmount, 2),
-                'total' => $total,
-                'amount_received' => $received,
-                'change_amount' => round($received - $total, 2),
-                'payment_method' => $request->payment_method ?? 'cash',
-                'payment_status' => 'paid',
-            ]);
-
-            foreach ($prepared as $line) {
-                Sales::create([
-                    'sale_transaction_id' => $invoice->id,
-                    'product_id' => $line['product']->id,
-                    'quantity' => $line['item']['quantity'],
-                    'total_price' => $line['lineTotal'],
+                $invoice = SaleTransaction::create([
+                    'invoice_number' => $this->invoiceNumber(),
+                    'user_id' => optional($request->user())->id,
+                    'branch_id' => optional($branch)->id,
+                    'customer_name' => $request->customer_name,
+                    'subtotal' => round($subtotal, 2),
+                    'discount' => round($discountAmount, 2),
+                    'total' => $total,
+                    'amount_received' => $received,
+                    'change_amount' => round($received - $total, 2),
+                    'payment_method' => $request->payment_method ?? 'cash',
+                    'payment_status' => 'paid',
                 ]);
 
-                $line['purchase']->decrement('quantity', $line['item']['quantity']);
-                if ($line['purchase']->quantity <= 1) {
-                    event(new MedicineOutStock($line['purchase']->fresh()));
+                foreach ($prepared as $line) {
+                    $saleLine = Sales::create([
+                        'sale_transaction_id' => $invoice->id,
+                        'product_id' => $line['product']->id,
+                        'quantity' => $line['item']['quantity'],
+                        'total_price' => $line['lineTotal'],
+                    ]);
+
+                    foreach ($line['allocations'] as $allocation) {
+                        $batch = Batch::whereKey($allocation['batch_id'])->lockForUpdate()->firstOrFail();
+                        $batch->decrement('quantity_available', $allocation['quantity']);
+                        SaleBatchAllocation::create([
+                            'sale_id' => $saleLine->id,
+                            'batch_id' => $batch->id,
+                            'quantity' => $allocation['quantity'],
+                            'returned_quantity' => 0,
+                        ]);
+                    }
+
+                    $remainingPurchase = $line['product']->purchase->fresh();
+                    if ($remainingPurchase && $remainingPurchase->quantity <= 1) {
+                        event(new MedicineOutStock($remainingPurchase));
+                    }
                 }
-            }
 
                 return $invoice;
             });
@@ -224,7 +261,7 @@ class SalesController extends Controller
         try {
             DB::transaction(function () use ($request, $transaction) {
                 $transaction = SaleTransaction::whereKey($transaction->id)
-                    ->with('lines.product')
+                    ->with('lines.allocations.batch')
                     ->lockForUpdate()
                     ->firstOrFail();
                 $lines = $transaction->lines()->lockForUpdate()->get()->keyBy('id');
@@ -240,15 +277,35 @@ class SalesController extends Controller
                     if (!$line) {
                         throw new \DomainException('The selected sale line is invalid.');
                     }
-                    $availableQuantity = $line->quantity - $line->returned_quantity;
-                    if ($returnQuantity > $availableQuantity) {
+
+                    $availableToReturn = $line->quantity - $line->returned_quantity;
+                    if ($returnQuantity > $availableToReturn) {
                         throw new \DomainException('Return quantity cannot exceed the quantity sold.');
                     }
 
-                    $purchase = Purchase::whereKey($line->product->purchase_id)->lockForUpdate()->firstOrFail();
+                    $remaining = $returnQuantity;
+                    foreach ($line->allocations()->with('batch')->orderBy('id')->get() as $allocation) {
+                        if ($remaining <= 0) {
+                            break;
+                        }
+
+                        $allocatable = $allocation->quantity - $allocation->returned_quantity;
+                        if ($allocatable <= 0) {
+                            continue;
+                        }
+
+                        $takeFromAllocation = min($remaining, $allocatable);
+                        $allocation->increment('returned_quantity', $takeFromAllocation);
+                        $allocation->batch()->first()->increment('quantity_available', $takeFromAllocation);
+                        $remaining -= $takeFromAllocation;
+                    }
+
+                    if ($remaining > 0) {
+                        throw new \DomainException('Return quantity exceeds the batch allocations for this item.');
+                    }
+
                     $unitPrice = $line->quantity > 0 ? (float) $line->total_price / $line->quantity : 0;
                     $line->increment('returned_quantity', $returnQuantity);
-                    $purchase->increment('quantity', $returnQuantity);
                     $returnedSubtotal += $unitPrice * $returnQuantity;
                 }
 

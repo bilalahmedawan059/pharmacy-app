@@ -4,43 +4,117 @@
     <meta charset="utf-8">
     <title>{{ $transaction->invoice_number }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #222; margin: 32px auto; max-width: 760px; }
-        .header { border-bottom: 2px solid #222; margin-bottom: 20px; padding-bottom: 12px; }
-        h1 { margin: 0 0 6px; font-size: 24px; }
-        .meta, .totals { display: flex; justify-content: space-between; gap: 20px; }
-        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border-bottom: 1px solid #ddd; padding: 9px 4px; text-align: left; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 8px;
+            width: 30mm;
+            max-width: 30mm;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .meta, .totals div, .line-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+        }
+        .meta {
+            font-size: 9px;
+            margin-top: 2px;
+        }
+        .muted {
+            font-size: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0;
+            font-size: 8px;
+        }
+        th, td {
+            padding: 2px 0;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px dashed #ddd;
+        }
         th:nth-child(n+2), td:nth-child(n+2) { text-align: right; }
-        .totals { border-top: 2px solid #222; padding-top: 8px; 
-        /* margin-left: auto;  */
-        /* max-width: 280px;  */
-    }
-        .totals div { display: flex; justify-content: space-between; gap: 18px; padding: 3px 0; flex-direction: column; }
-        .grand-total { font-weight: bold; font-size: 18px; }
-        .actions { margin: 24px 0; }
-        .actions a, .actions button { background: #206bc4; border: 0; color: white; cursor: pointer; padding: 10px 14px; text-decoration: none; margin-right: 8px; }
-        @media print { .actions { display: none; } body { margin: 0; } }
+        .totals {
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            margin-top: 6px;
+            font-size: 9px;
+        }
+        .totals div { padding: 1px 0; }
+        .grand-total {
+            font-weight: bold;
+            font-size: 10px;
+        }
+        .actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .actions a, .actions button {
+            background: #206bc4;
+            border: 0;
+            color: white;
+            cursor: pointer;
+            padding: 6px 10px;
+            font-size: 9px;
+            text-decoration: none;
+        }
+        @media print {
+            body {
+                width: 30mm;
+                max-width: 30mm;
+                margin: 0 auto;
+                padding: 0;
+            }
+            .actions { display: none; }
+            @page { size: 30mm auto; margin: 0; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>{{ AppSettings::get('app_name', 'Pharmacy') }}</h1>
-        <div class="meta"><span>Invoice: {{ $transaction->invoice_number }}</span><span>{{ $transaction->created_at->format('d M Y H:i') }}</span></div>
-        <div>Cashier: {{ optional($transaction->user)->name ?: 'Staff' }}</div>
-        @if ($transaction->customer_name)<div>Customer: {{ $transaction->customer_name }}</div>@endif
+        <div class="meta"><span>{{ $transaction->invoice_number }}</span><span>{{ $transaction->created_at->format('d/m/Y H:i') }}</span></div>
+        <div class="muted">Cashier: {{ optional($transaction->user)->name ?: 'Staff' }}</div>
+        @if ($transaction->customer_name)<div class="muted">Customer: {{ $transaction->customer_name }}</div>@endif
     </div>
 
     <table>
-        <thead><tr><th>Medicine</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Amt</th>
+            </tr>
+        </thead>
         <tbody>
         @foreach ($transaction->lines as $line)
             @php($remainingQuantity = $line->quantity - $line->returned_quantity)
             @if ($remainingQuantity > 0)
+            @php($batch = $line->allocations()->with('batch')->first()?->batch)
             <tr>
-                <td>{{ optional($line->product->purchase)->name ?: 'Medicine' }}</td>
+                <td>{{ Str::limit(optional($line->product->purchase)->name ?: 'Medicine', 12) }}<br><span class="muted">{{ $batch ? $batch->batch_number : '-' }} / {{ $batch && $batch->expiry_date ? $batch->expiry_date->format('m/Y') : '-' }}</span></td>
                 <td>{{ $remainingQuantity }}</td>
-                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format($line->quantity > 0 ? $line->total_price / $line->quantity : 0, 2) }}</td>
-                <td>{{ AppSettings::get('app_currency', '$') }} {{ number_format(($line->quantity > 0 ? $line->total_price / $line->quantity : 0) * $remainingQuantity, 2) }}</td>
+                <td>{{ number_format(($line->quantity > 0 ? $line->total_price / $line->quantity : 0) * $remainingQuantity, 2) }}</td>
             </tr>
             @endif
         @endforeach
@@ -48,14 +122,14 @@
     </table>
 
     <div class="totals">
-        <div><span>Subtotal</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->subtotal, 2) }}</span></div>
-        <div><span>Discount</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->discount, 2) }}</span></div>
-        <div><span>Payment method</span><span>{{ ucfirst($transaction->payment_method ?? 'cash') }}</span></div>
-        <div class="grand-total"><span>Total</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->total, 2) }}</span></div>
-        <div><span>Cash received</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->amount_received, 2) }}</span></div>
-        <div><span>Change</span><span>{{ AppSettings::get('app_currency', '$') }} {{ number_format($transaction->change_amount, 2) }}</span></div>
+        <div><span>Subtotal</span><span>{{ number_format($transaction->subtotal, 2) }}</span></div>
+        <div><span>Discount</span><span>{{ number_format($transaction->discount, 2) }}</span></div>
+        <div><span>Method</span><span>{{ ucfirst($transaction->payment_method ?? 'cash') }}</span></div>
+        <div class="grand-total"><span>Total</span><span>{{ number_format($transaction->total, 2) }}</span></div>
+        <div><span>Cash</span><span>{{ number_format($transaction->amount_received, 2) }}</span></div>
+        <div><span>Change</span><span>{{ number_format($transaction->change_amount, 2) }}</span></div>
     </div>
-    <p>Thank you for your purchase.</p>
+    <div class="muted" style="text-align:center; margin-top:6px;">Thank you for your purchase.</div>
     <div class="actions">
         <button type="button" onclick="window.print()">Print bill</button>
         <a href="{{ route('sales') }}">New sale</a>

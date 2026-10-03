@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Batch;
 use App\Models\Category;
 use App\Models\Pharmacy;
 use App\Models\Product;
@@ -385,6 +386,25 @@ class DemoDataSeeder extends Seeder
                         'pharmacy_id' => $pharmacy->id,
                     ]
                 );
+
+                $purchase->refresh();
+                $batch = Batch::withoutGlobalScopes()->where('purchase_id', $purchase->id)
+                    ->where('batch_number', 'LEGACY-' . $purchase->id)
+                    ->first();
+
+                if (!$batch) {
+                    Batch::withoutGlobalScopes()->create([
+                        'purchase_id' => $purchase->id,
+                        'branch_id' => null,
+                        'batch_number' => 'LEGACY-' . $purchase->id,
+                        'expiry_date' => $item['expiry'],
+                        'quantity_received' => (int) $item['quantity'],
+                        'quantity_available' => (int) $item['quantity'],
+                        'pharmacy_id' => $pharmacy->id,
+                    ]);
+                }
+
+                $purchase->refreshTotals();
 
                 /*
                  * -----------------------------------------------------

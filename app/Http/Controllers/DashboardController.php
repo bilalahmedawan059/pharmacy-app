@@ -30,7 +30,7 @@ class DashboardController extends Controller
         $available_medicines = Purchase::where('quantity', '>' , 5)->count();
         $total_medicines_outStock = Purchase::where('quantity', 0)->count();
         $total_medicines_runningOutStock = Purchase::where('quantity', '<=', 5)->count();
-        $total_purchases = Purchase::where('expiry_date','=',Carbon::now())->count();
+        $total_purchases = Purchase::count();
 
         $total_categories = Category::count();
         $total_suppliers = Supplier::count();
@@ -57,7 +57,7 @@ class DashboardController extends Controller
 
             // dd($pieChart );
 
-        $total_expired_products = Purchase::whereDate('expiry_date', '=', Carbon::now())->count();
+        $total_expired_products = \App\Models\Batch::whereDate('expiry_date', '<', Carbon::today())->where('quantity_available', '>', 0)->count();
         $latest_sales = Sales::with([
             'product.purchase',
             'pharmacy',

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
 use App\Models\Category;
 use App\Models\Purchase;
 use App\Models\Supplier;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
 {
@@ -42,38 +45,74 @@ class PurchaseController extends Controller
             'name' => 'required|max:200',
             'category' => 'required',
             'price' => 'required|min:1',
-            'quantity' => 'required|min:1',
-            'expiry_date' => 'required',
+            'quantity' => 'required|integer|min:1',
+            'batch_number' => 'required|string|max:80',
+            'expiry_date' => ['required', 'regex:/^(0[1-9]|1[0-2])\\/\\d{4}$/'],
             'supplier' => 'required',
             'image' => 'file|image|mimes:jpg,jpeg,png,gif',
         ]);
+
         $imageName = null;
         Category::findOrFail($request->category);
         Supplier::findOrFail($request->supplier);
+
         if ($request->hasFile('image')) {
             $imageName = time() . '.' . $request->image->extension();
             $request->image->move(public_path('storage/purchases'), $imageName);
         }
+
         try {
-            $purchase = Purchase::create([
-                'name' => $request->name,
-                'category_id' => $request->category,
-                'supplier_id' => $request->supplier,
-                'price' => $request->price,
-                'quantity' => $request->quantity,
-                'expiry_date' => $request->expiry_date,
-                'image' => $imageName,
-            ]);
-            $notifications = array(
-                'success' =>  $purchase->name . '  ' ." added successfully!",
-                // 'alert-type' => 'success',
-            );
+            $purchase = DB::transaction(function () use ($request, $imageName) {
+                $purchase = Purchase::where('name', trim($request->name))->first();
+                $expiryDate = $this->parseExpiryMonthYear($request->expiry_date);
+
+                if (!$purchase) {
+                    $purchase = Purchase::create([
+                        'name' => trim($request->name),
+                        'category_id' => $request->category,
+                        'supplier_id' => $request->supplier,
+                        'price' => $request->price,
+                        'quantity' => 0,
+                        'expiry_date' => $expiryDate->toDateString(),
+                        'image' => $imageName,
+                    ]);
+                }
+
+                $batch = Batch::where('purchase_id', $purchase->id)
+                    ->where('batch_number', trim($request->batch_number))
+                    ->whereNull('branch_id')
+                    ->first();
+
+                if (!$batch) {
+                    $batch = Batch::create([
+                        'purchase_id' => $purchase->id,
+                        'branch_id' => null,
+                        'batch_number' => trim($request->batch_number),
+                        'expiry_date' => $expiryDate->toDateString(),
+                        'quantity_received' => (int) $request->quantity,
+                        'quantity_available' => (int) $request->quantity,
+                    ]);
+                } else {
+                    if ($batch->expiry_date->toDateString() !== $expiryDate->toDateString()) {
+                        throw new \DomainException('This batch number already exists with a different expiry date.');
+                    }
+
+                    $batch->increment('quantity_received', (int) $request->quantity);
+                    $batch->increment('quantity_available', (int) $request->quantity);
+                }
+
+                $purchase->refreshTotals();
+
+                return $purchase;
+            });
+
+            $notifications = [
+                'success' => $purchase->name . ' added successfully!',
+            ];
         } catch (\Throwable $th) {
-            $notifications = array(
-                'error' => "Opps!! Something got wrong, Please check and try again",
-                // 'alert-type' => 'error',
-            );
+            return redirect()->back()->withInput()->withErrors(['batch_number' => $th->getMessage()]);
         }
+
         return redirect()->route('purchases')->with($notifications);
     }
 
@@ -121,15 +160,13 @@ class PurchaseController extends Controller
                 'price' => $request->price,
                 'quantity' => $request->quantity,
                 'expiry_date' => $request->expiry_date,
-                'image' => $imageName??$request->update_image,
+                'image' => $imageName ?? $request->update_image,
             ]);
             $notifications = array(
                 'success' =>  $purchase->name . '  ' ." updated successfully!",
             );
         } catch (\Throwable $th) {
-            $notifications = array(
-                'error' => "Opps!! Something got wrong, Please check and try again",
-            );
+            return redirect()->back()->withInput()->withErrors(['name' => $th->getMessage()]);
         }
         return redirect()->route('purchases')->with($notifications);
     }
@@ -145,5 +182,16 @@ class PurchaseController extends Controller
             'alert-type' => 'success'
         );
         return back()->with($notification);
+    }
+
+    private function parseExpiryMonthYear(string $value): Carbon
+    {
+        $parts = preg_split('/\s*\/\s*/', trim($value));
+
+        if (count($parts) !== 2 || ! is_numeric($parts[0]) || ! is_numeric($parts[1])) {
+            throw new \InvalidArgumentException('Expiry date must be in MM/YYYY format.');
+        }
+
+        return Carbon::createFromDate((int) $parts[1], (int) $parts[0], 1)->endOfMonth();
     }
 }

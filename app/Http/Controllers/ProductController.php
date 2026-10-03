@@ -41,7 +41,9 @@ class ProductController extends Controller
     public function expired(){
         $this->authorize('view-expired-products');
         $title = "expired Products";
-        $products = Purchase::whereDate('expiry_date', '<', Carbon::now())->paginate(10)->withQueryString();
+        $products = Purchase::whereHas('batches', function ($query) {
+            $query->whereDate('expiry_date', '<', Carbon::today());
+        })->paginate(10)->withQueryString();
 
         return view('products.expired',compact(
             'title','products'
@@ -71,8 +73,8 @@ class ProductController extends Controller
         ]);
 
         $price = $request->price;
-        if($request->discount >0){
-           $price = $request->discount * $request->price;
+        if ($request->discount > 0) {
+            $price = round((float) $request->price * (1 - ((float) $request->discount / 100)), 2);
         }
        try {
 
@@ -123,8 +125,8 @@ class ProductController extends Controller
         ]);
 
         $price = $request->price;
-        if($request->discount >0){
-           $price = $request->discount * $request->price;
+        if ($request->discount > 0) {
+            $price = round((float) $request->price * (1 - ((float) $request->discount / 100)), 2);
         }
        try {
         $product->update([

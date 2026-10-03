@@ -70,6 +70,12 @@
 							</div>
 							<div class="col-lg-4">
 								<div class="form-group">
+									<label>Batch Number<span class="text-danger">*</span></label>
+									<input class="form-control" type="text" name="batch_number" placeholder="e.g. B-101">
+								</div>
+							</div>
+							<div class="col-lg-4">
+								<div class="form-group">
 									<label>Category <span class="text-danger">*</span></label>
 									<select class="select2 form-select form-control" name="category">
 										@foreach ($categories as $category)
@@ -112,8 +118,8 @@
 						<div class="row">
 							<div class="col-lg-6">
 								<div class="form-group">
-									<label>Expire Date<span class="text-danger">*</span></label>
-									<input class="form-control" type="date" name="expiry_date">
+										<label>Expiry (MM/YYYY)<span class="text-danger">*</span></label>
+										<input class="form-control" type="text" name="expiry_date" placeholder="MM/YYYY">
 								</div>
 							</div>
 							<div class="col-lg-6">
