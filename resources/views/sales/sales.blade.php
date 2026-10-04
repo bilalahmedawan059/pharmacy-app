@@ -69,7 +69,11 @@
                         <button type="submit" class="btn btn-secondary btn-block">Load invoice items</button>
                     </form>
                     @if ($returnTransaction)
-                        <form method="POST" action="{{ route('sales.transaction.return', $returnTransaction) }}" id="return-sale-form">
+                        <form method="POST" action="{{ route('sales.transaction.return', $returnTransaction) }}" id="return-sale-form"
+                            data-invoice-subtotal="{{ $returnTransaction->subtotal }}"
+                            data-invoice-discount="{{ $returnTransaction->discount }}"
+                            data-invoice-total="{{ $returnTransaction->total }}"
+                            data-currency="{{ AppSettings::get('app_currency', '$') }}">
                             @csrf
                             @if ($branchId)<input type="hidden" name="branch_id" value="{{ $branchId }}">@endif
                             <div class="table-responsive">
@@ -89,12 +93,29 @@
                                                     </div>
                                                 </td>
                                                 <td>{{ $availableQuantity }}</td>
-                                                <td><input type="number" class="form-control" name="returns[{{ $line->id }}]" min="0" max="{{ $availableQuantity }}" value="0"></td>
+                                                <td><input type="number" class="form-control return-quantity" name="returns[{{ $line->id }}]" min="0" max="{{ $availableQuantity }}" value="0"
+                                                    data-available="{{ $availableQuantity }}"
+                                                    data-line-quantity="{{ $line->quantity }}"
+                                                    data-line-total="{{ $line->total_price }}"></td>
                                             </tr>
                                         @endif
                                     @endforeach
                                     </tbody>
                                 </table>
+                            </div>
+                            <div class="return-summary-box" id="return-summary">
+                                <div class="return-summary-row">
+                                    <span>Invoice discount remaining</span>
+                                    <strong>{{ AppSettings::get('app_currency', '$') }} {{ number_format($returnTransaction->discount, 2) }}</strong>
+                                </div>
+                                <div class="return-summary-row">
+                                    <span>Amount charged before this return</span>
+                                    <strong>{{ AppSettings::get('app_currency', '$') }} {{ number_format($returnTransaction->total, 2) }}</strong>
+                                </div>
+                                <div class="return-summary-row total">
+                                    <span>Refund due for selected items</span>
+                                    <strong id="return-refund-amount">{{ AppSettings::get('app_currency', '$') }} 0.00</strong>
+                                </div>
                             </div>
                             @if ($errors->has('returns'))<div class="alert alert-danger mt-3">{{ $errors->first('returns') }}</div>@endif
                             <button type="submit" class="btn btn-primary btn-block">Process selected return</button>
@@ -385,6 +406,31 @@
             color: #6d7d8a !important;
         }
 
+        .return-summary-box {
+            border: 1px solid #e4edf3;
+            border-radius: 12px;
+            background: #f8fafb;
+            padding: 12px 14px;
+            margin: 16px 0;
+        }
+
+        .return-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 0;
+            color: #415264;
+        }
+
+        .return-summary-row.total {
+            margin-top: 6px;
+            padding-top: 10px;
+            border-top: 1px solid #e5edf2;
+            color: #1d2b36;
+            font-size: 18px;
+        }
+
         .pos-sales-sidebar {
             display: flex;
             flex-direction: column;
@@ -521,6 +567,34 @@
                     $(this).toggle($(this).attr('data-invoice-search').toLocaleLowerCase().includes(query));
                 });
             });
+
+            function updateReturnRefund() {
+                var form = document.getElementById('return-sale-form');
+                if (!form) return;
+
+                var remainingSubtotal = 0;
+                $(form).find('.return-quantity').each(function() {
+                    var quantity = Math.max(0, Math.min(parseInt(this.value, 10) || 0, Number(this.dataset.available)));
+                    var lineQuantity = Number(this.dataset.lineQuantity);
+                    var lineTotal = Number(this.dataset.lineTotal);
+                    if (lineQuantity > 0) {
+                        remainingSubtotal += lineTotal * (Number(this.dataset.available) - quantity) / lineQuantity;
+                    }
+                });
+
+                var invoiceSubtotal = Number(form.dataset.invoiceSubtotal);
+                var invoiceDiscount = Number(form.dataset.invoiceDiscount);
+                var invoiceTotal = Number(form.dataset.invoiceTotal);
+                var discountRate = invoiceSubtotal > 0 ? invoiceDiscount / invoiceSubtotal : 0;
+                remainingSubtotal = Math.round(remainingSubtotal * 100) / 100;
+                var remainingDiscount = Math.round(remainingSubtotal * discountRate * 100) / 100;
+                var remainingTotal = Math.round((remainingSubtotal - remainingDiscount) * 100) / 100;
+                var refund = Math.max(0, Math.round((invoiceTotal - remainingTotal) * 100) / 100);
+                $('#return-refund-amount').text(form.dataset.currency + ' ' + refund.toFixed(2));
+            }
+
+            $('#return-sale-form').on('input change', '.return-quantity', updateReturnRefund);
+            updateReturnRefund();
 
             $('#datatable-export').on('click', '.editbtn', function() {
                 event.preventDefault();

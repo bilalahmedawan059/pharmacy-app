@@ -83,24 +83,26 @@
                                         <td>{{ AppSettings::get('app_currency', '$') }}{{ $purchase->price }}</td>
                                         <td>
                                             {{ $purchase->batches->filter(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); })->sum('quantity_available') }}
-                                            <details class="mt-2">
+                                            <details class="mt-2 batch-details">
                                                 <summary>View batches</summary>
-                                                <table class="table table-sm mt-2 mb-0">
-                                                    <thead><tr><th>Batch</th><th>Expiry</th><th>Received</th><th>Left</th><th></th></tr></thead>
-                                                    <tbody>
-                                                    @php($sellFirstBatch = $purchase->batches->first(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); }))
-                                                    @foreach ($purchase->batches as $batch)
-                                                        @php($batchClass = $batch->expiry_date->lt(today()) ? 'text-danger' : ($batch->expiry_date->lte(today()->addDays(30)) ? 'text-warning' : ''))
-                                                        <tr class="{{ $batchClass }}">
-                                                            <td><a href="{{ route('purchases.batch', [$purchase, $batch]) }}">{{ $batch->batch_number }}</a></td>
-                                                            <td>{{ $batch->expiry_date->format('m/Y') }}</td>
-                                                            <td>{{ $batch->quantity_received }}</td>
-                                                            <td>{{ $batch->quantity_available }}</td>
-                                                            <td>@if ($sellFirstBatch && $sellFirstBatch->id === $batch->id)<strong>Sells first</strong>@endif</td>
-                                                        </tr>
-                                                    @endforeach
-                                                    </tbody>
-                                                </table>
+                                                <div class="batch-popover">
+                                                    <table class="table table-sm mb-0">
+                                                        <thead><tr><th>Batch</th><th>Expiry</th><th>Received</th><th>Left</th><th></th></tr></thead>
+                                                        <tbody>
+                                                        @php($sellFirstBatch = $purchase->batches->first(function ($batch) { return $batch->quantity_available > 0 && $batch->expiry_date->gte(today()); }))
+                                                        @foreach ($purchase->batches as $batch)
+                                                            @php($batchClass = $batch->expiry_date->lt(today()) ? 'text-danger' : ($batch->expiry_date->lte(today()->addDays(30)) ? 'text-warning' : ''))
+                                                            <tr class="{{ $batchClass }}">
+                                                                <td><a href="{{ route('purchases.batch', [$purchase, $batch]) }}">{{ $batch->batch_number }}</a></td>
+                                                                <td>{{ $batch->expiry_date->format('m/Y') }}</td>
+                                                                <td>{{ $batch->quantity_received }}</td>
+                                                                <td>{{ $batch->quantity_available }}</td>
+                                                                <td>@if ($sellFirstBatch && $sellFirstBatch->id === $batch->id)<strong>Sells first</strong>@endif</td>
+                                                            </tr>
+                                                        @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </details>
                                         </td>
                                         <td>{{ $purchase->supplier->name }}</td>

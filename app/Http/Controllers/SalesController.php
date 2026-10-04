@@ -307,8 +307,9 @@ class SalesController extends Controller
             'returns.*' => 'nullable|integer|min:0',
         ]);
 
+        $refundAmount = 0;
         try {
-            DB::transaction(function () use ($request, $transaction) {
+            DB::transaction(function () use ($request, $transaction, &$refundAmount) {
                 $transaction = SaleTransaction::whereKey($transaction->id)
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -424,6 +425,7 @@ class SalesController extends Controller
                 });
                 $discount = round($remainingSubtotal * $discountRate, 2);
                 $total = round($remainingSubtotal - $discount, 2);
+                $refundAmount = round((float) $transaction->total - $total, 2);
 
                 $transaction->update([
                     'subtotal' => round($remainingSubtotal, 2),
@@ -437,7 +439,10 @@ class SalesController extends Controller
             return back()->withErrors(['returns' => $exception->getMessage()]);
         }
 
-        return back()->with(['message' => 'Items returned and stock restored successfully.', 'alert-type' => 'success']);
+        return back()->with([
+            'message' => 'Items returned and stock restored successfully. Refund due: ' . number_format($refundAmount, 2) . '.',
+            'alert-type' => 'success',
+        ]);
     }
 
     public function destroy(Request $request)

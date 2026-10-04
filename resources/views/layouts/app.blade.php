@@ -173,6 +173,30 @@
             vertical-align: middle;
         }
 
+        .batch-details > summary {
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .batch-popover {
+            position: fixed;
+            z-index: 1080;
+            top: 0;
+            left: 0;
+            width: min(560px, calc(100vw - 16px));
+            max-height: min(360px, calc(100vh - 16px));
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid var(--sales-border);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
+        }
+
+        .batch-popover .table {
+            min-width: 480px;
+        }
+
         .table-search-control {
             display: flex;
             align-items: center;
@@ -477,6 +501,64 @@
                 }
             });
         });
+    </script>
+
+    <script>
+        (function() {
+            function positionBatchPopover(details) {
+                var popover = details.querySelector('.batch-popover');
+                var summary = details.querySelector('summary');
+                if (!popover || !summary || !details.open) return;
+
+                var trigger = summary.getBoundingClientRect();
+                var panel = popover.getBoundingClientRect();
+                var margin = 8;
+                var left = Math.max(margin, Math.min(trigger.left, window.innerWidth - panel.width - margin));
+                var below = trigger.bottom + margin;
+                var top = below + panel.height <= window.innerHeight - margin
+                    ? below
+                    : Math.max(margin, trigger.top - panel.height - margin);
+
+                popover.style.left = left + 'px';
+                popover.style.top = top + 'px';
+            }
+
+            function positionOpenBatchPopovers() {
+                document.querySelectorAll('details.batch-details[open]').forEach(positionBatchPopover);
+            }
+
+            document.addEventListener('toggle', function(event) {
+                var details = event.target;
+                if (!details.matches || !details.matches('details.batch-details')) return;
+
+                if (details.open) {
+                    document.querySelectorAll('details.batch-details[open]').forEach(function(openDetails) {
+                        if (openDetails !== details) openDetails.open = false;
+                    });
+                    positionBatchPopover(details);
+                }
+            }, true);
+
+            document.addEventListener('click', function(event) {
+                if (event.target.closest && event.target.closest('details.batch-details')) return;
+                document.querySelectorAll('details.batch-details[open]').forEach(function(details) {
+                    details.open = false;
+                });
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key !== 'Escape') return;
+
+                var openDetails = document.querySelector('details.batch-details[open]');
+                if (openDetails) {
+                    openDetails.open = false;
+                    openDetails.querySelector('summary').focus();
+                }
+            });
+
+            window.addEventListener('resize', positionOpenBatchPopovers);
+            window.addEventListener('scroll', positionOpenBatchPopovers, true);
+        })();
     </script>
 
     @stack('page-js')

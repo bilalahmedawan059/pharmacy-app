@@ -152,6 +152,34 @@ class BatchStockTest extends TestCase
         $this->assertSame([5, 4], $line->allocations()->orderBy('batch_id')->pluck('returned_quantity')->all());
     }
 
+    public function test_return_page_estimates_the_refund_after_invoice_discount_and_confirms_it_after_return(): void
+    {
+        [$user, $purchase, $product] = $this->saleFixture(0);
+        $batch = $this->batch($purchase, 'DISCOUNT-RETURN', '2030-03-31', 4);
+        $this->actingAs($user)->post(route('sales'), [
+            'items' => [['product_id' => $product->id, 'quantity' => 4]],
+            'discount_percent' => 20,
+            'amount_received' => 20,
+        ])->assertRedirect();
+
+        $transaction = SaleTransaction::firstOrFail();
+        $line = $transaction->lines()->firstOrFail();
+
+        $this->actingAs($user)->get(route('sales', ['return_transaction_id' => $transaction->id]))
+            ->assertOk()
+            ->assertSee('Invoice discount remaining')
+            ->assertSee('Amount charged before this return')
+            ->assertSee('Refund due for selected items')
+            ->assertSee('data-invoice-total="16.00"', false);
+
+        $this->actingAs($user)->post(route('sales.transaction.return', $transaction), [
+            'returns' => [$line->id => 2],
+        ])->assertSessionHas('message', 'Items returned and stock restored successfully. Refund due: 8.00.');
+
+        $this->assertSame('8.00', $transaction->fresh()->total);
+        $this->assertSame(2, $batch->fresh()->quantity_available);
+    }
+
     public function test_purchase_intake_tops_up_matching_branch_batch_and_rejects_a_different_expiry(): void
     {
         $user = User::factory()->create();
